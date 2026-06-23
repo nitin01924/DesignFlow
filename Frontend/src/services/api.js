@@ -9,3 +9,13 @@ export const registerUser = async (data) => {
 
   return result;
 };
+
+// LOGIN USER
+export const loginUser = async (data) => {
+  const result = await apiRequest("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+  return result.data;
+};
