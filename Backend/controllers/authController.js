@@ -39,4 +39,45 @@ export const registerUser = async (req, res) => {
   }
 };
 
-export const loginUser = async (req, res) => {};
+// !!==================== Login-User ====================!!
+
+export const loginUser = async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    res.status(400).json({
+      message: "email and password are required",
+    });
+  }
+
+  const normalizedEmail = email.toLowerCase();
+  const user = await User.findOne({ email: normalizedEmail }).select(
+    "+password",
+  );
+
+  if (!user) {
+    res.status(404).json({
+      success: false,
+      message: "User not found. Please register first.",
+    });
+  }
+
+  const isPasswordMatched = await user.matchPassword(password);
+
+  if (!isPasswordMatched) {
+    res.status(401).json({
+      success: false,
+      message: "Invalid email or password",
+    });
+  }
+
+  res.status(201).json({
+    success: true,
+    message: "User has been logged-in",
+    data: {
+      name: user.name,
+      id: user._id,
+      email: user.email,
+    },
+  });
+};
