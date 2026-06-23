@@ -2,7 +2,7 @@ import { apiRequest } from "../utils/api";
 
 //CONNECT REGISTERUSER frontend to backend
 export const registerUser = async (data) => {
-  const result = await apiRequest("/auth/register", {
+  const result = await apiRequest("/api/auth/register", {
     method: "POST",
     body: JSON.stringify(data),
   });
@@ -12,7 +12,7 @@ export const registerUser = async (data) => {
 
 // LOGIN USER
 export const loginUser = async (data) => {
-  const result = await apiRequest("/auth/login", {
+  const result = await apiRequest("/api/auth/login", {
     method: "POST",
     body: JSON.stringify(data),
   });
