@@ -4,7 +4,7 @@ import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+import UnderConstruction from "./pages/UnderConstruction.jsx";
 
 //
 //  FUNCTION - APP
@@ -76,16 +76,8 @@ function App() {
       )}
 
       <Routes>
-        <Route
-          path="/"
-          element={
-            token ? (
-              <Navigate to="/notes" />
-            ) : (
-              <Login onAuthSuccess={handleAuthSuccess} />
-            )
-          }
-        />
+        <Route path="/" element={<Login />} />
+
         <Route
           path="/register"
           element={<Register onAuthSuccess={handleAuthSuccess} />}
@@ -94,6 +86,7 @@ function App() {
           path="/notes"
           element={token ? <Notes /> : <Navigate to="/" />}
         />
+        <Route path="/under-construction" element={<UnderConstruction />} />
       </Routes>
       <ToastContainer position="top-right" autoClose={2000} />
     </div>

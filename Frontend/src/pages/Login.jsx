@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import Input from "../components/Input";
 import { toast } from "react-toastify";
+import UnderConstruction from "./UnderConstruction";
 
 function Login({ onAuthSuccess }) {
   const navigate = useNavigate();
@@ -38,8 +39,9 @@ function Login({ onAuthSuccess }) {
       const data = { email, password };
       const res = await loginUser(data);
 
-      onAuthSuccess(res.token);
-      navigate("/notes");
+      toast.success("Login successful.")
+    //   onAuthSuccess(res.token);
+      navigate("/under-construction");
     } catch (error) {
       const message = error.message || "Unable to login";
       toast.error(message);
