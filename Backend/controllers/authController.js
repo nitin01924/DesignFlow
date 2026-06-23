@@ -45,7 +45,7 @@ export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    res.status(400).json({
+   return res.status(400).json({
       message: "email and password are required",
     });
   }
@@ -56,7 +56,7 @@ export const loginUser = async (req, res) => {
   );
 
   if (!user) {
-    res.status(404).json({
+    return res.status(404).json({
       success: false,
       message: "User not found. Please register first.",
     });
@@ -65,7 +65,7 @@ export const loginUser = async (req, res) => {
   const isPasswordMatched = await user.matchPassword(password);
 
   if (!isPasswordMatched) {
-    res.status(401).json({
+    return res.status(401).json({
       success: false,
       message: "Invalid email or password",
     });
