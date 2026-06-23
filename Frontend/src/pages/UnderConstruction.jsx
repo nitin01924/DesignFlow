@@ -9,7 +9,7 @@ function UnderConstruction() {
         loop
         muted
         playsInline
-        className="w-[500px] rounded-lg"
+        className="w-[50%] rounded-lg"
       />
 
       <h1 className="text-3xl font-bold mt-6">
