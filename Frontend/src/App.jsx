@@ -1,10 +1,11 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import UnderConstruction from "./pages/UnderConstruction.jsx";
+import VerifyEmail from "./pages/VerifyEmail.jsx";
 import { Analytics } from "@vercel/analytics/react";
 
 //
@@ -54,6 +55,8 @@ function App() {
   }, [token]);
 
   const handleAuthSuccess = (nextToken) => {
+    if (!nextToken) return;
+
     localStorage.setItem("token", nextToken);
     setToken(nextToken);
   };
@@ -77,20 +80,14 @@ function App() {
       )}
 
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<Login onAuthSuccess={handleAuthSuccess} />} />
 
-        <Route
-          path="/register"
-          element={<Register onAuthSuccess={handleAuthSuccess} />}
-        />
-        <Route
-          path="/notes"
-          element={token ? <Notes /> : <Navigate to="/" />}
-        />
+        <Route path="/register" element={<Register />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/under-construction" element={<UnderConstruction />} />
       </Routes>
       <ToastContainer position="top-right" autoClose={2000} />
-       <Analytics />
+      <Analytics />
     </div>
   );
 }

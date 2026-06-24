@@ -19,3 +19,16 @@ export const loginUser = async (data) => {
 
   return result.data;
 };
+
+export const verifyEmail = async (token) => {
+  return await apiRequest(
+    `/api/auth/verify-email?token=${encodeURIComponent(token)}`,
+  );
+};
+
+export const resendVerification = async (email) => {
+  return await apiRequest("/api/auth/resend-verification", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+};

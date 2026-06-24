@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { loginUser } from "../services/api";
+import { loginUser, resendVerification } from "../services/api";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import Input from "../components/Input";
 import { toast } from "react-toastify";
-import UnderConstruction from "./UnderConstruction";
 
 function Login({ onAuthSuccess }) {
   const navigate = useNavigate();
@@ -39,8 +38,10 @@ function Login({ onAuthSuccess }) {
       const data = { email, password };
       const res = await loginUser(data);
 
-      toast.success("Login successful.")
-    //   onAuthSuccess(res.token);
+      toast.success("Login successful.");
+      if (res?.token) {
+        onAuthSuccess?.(res.token);
+      }
       navigate("/under-construction");
     } catch (error) {
       const message = error.message || "Unable to login";
@@ -80,7 +81,7 @@ function Login({ onAuthSuccess }) {
         />
 
         <p
-          onClick={() => navigate("/forgot-password")}
+          onClick={() => navigate("/under-construction")}
           className="text-sm text-blue-500 cursor-pointer"
         >
           Forgot Password?

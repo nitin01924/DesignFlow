@@ -5,7 +5,7 @@ import Button from "../components/Button";
 import Input from "../components/Input";
 import { toast } from "react-toastify";
 
-function Register({ onAuthSuccess }) {
+function Register() {
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
@@ -35,14 +35,13 @@ function Register({ onAuthSuccess }) {
       const res = await registerUser(data);
 
       if (res) {
-        toast.success("User Registered");
+        toast.success("User registered");
         setTimeout(() => {
-          toast.success("check your Email to verify");
+          toast.success("Check your email to verify your account");
         }, 2000);
       }
 
-      onAuthSuccess(res.token);
-      navigate("/notes");
+      navigate("/");
 
       console.log(res);
     } catch (error) {
