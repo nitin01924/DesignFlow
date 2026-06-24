@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import * as crypto from "crypto";
+import { sendVerificationEmail } from "../utils/SendEmail.js";
 
 export const registerUser = async (req, res) => {
   try {
@@ -25,11 +26,14 @@ export const registerUser = async (req, res) => {
       name,
       email: normalizedEmail,
       password,
+      verificationToken: token,
     });
+
+    await sendVerificationEmail(user.email, token);
 
     res.status(201).json({
       success: true,
-      message: "User has been Registered",
+      message: "Check your email to verify account",
     });
   } catch (error) {
     res.status(500).json({
@@ -45,7 +49,7 @@ export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-   return res.status(400).json({
+    return res.status(400).json({
       message: "email and password are required",
     });
   }
