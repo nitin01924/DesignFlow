@@ -11,8 +11,13 @@ export const sendVerificationEmail = async (email, token) => {
 
   const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
   try {
-    const verifyLink = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
-    console.log(process.env.BREVO_API_KEY);
+    if (!process.env.CLIENT_URL) {
+      throw new Error("CLIENT_URL is required to send verification emails");
+    }
+
+    const clientUrl = process.env.CLIENT_URL.replace(/\/$/, "");
+    const verifyLink = `${clientUrl}/verify-email?token=${encodeURIComponent(token)}`;
+
     console.log("📨 Sending verification email...");
 
     await apiInstance.sendTransacEmail({
@@ -82,4 +87,3 @@ export const sendVerificationEmail = async (email, token) => {
     throw error;
   }
 };
-
