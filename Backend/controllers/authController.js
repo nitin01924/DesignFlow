@@ -85,3 +85,27 @@ export const loginUser = async (req, res) => {
     },
   });
 };
+
+//
+// !!==================== Verify_email================!!
+
+export const verifyEmail = asyncHandler(async (req, res) => {
+  const { token } = req.query;
+
+  const user = await User.findOne({ verificationToken: token });
+
+  if (!user) {
+    res.status(400);
+    throw new Error("Invalid or expired token");
+  }
+  if (user.isVerified) {
+    return res.json({ message: "Email already verified" });
+  }
+
+  user.isVerified = true;
+  user.verificationToken = null;
+
+  await user.save();
+
+  res.json({ success: true, message: "Email verified successfully" });
+});
