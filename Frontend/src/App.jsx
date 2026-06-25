@@ -6,6 +6,8 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import UnderConstruction from "./pages/UnderConstruction.jsx";
 import VerifyEmail from "./pages/VerifyEmail.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
 import { Analytics } from "@vercel/analytics/react";
 
 //
@@ -84,6 +86,8 @@ function App() {
 
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/under-construction" element={<UnderConstruction />} />
       </Routes>
       <ToastContainer position="top-right" autoClose={2000} />

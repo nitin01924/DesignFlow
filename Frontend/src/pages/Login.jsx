@@ -81,7 +81,7 @@ function Login({ onAuthSuccess }) {
         />
 
         <p
-          onClick={() => navigate("/under-construction")}
+          onClick={() => navigate("/forgot-password")}
           className="text-sm text-blue-500 cursor-pointer"
         >
           Forgot Password?
