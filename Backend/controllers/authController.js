@@ -1,10 +1,14 @@
 import User from "../models/User.js";
 import * as crypto from "crypto";
-import { sendVerificationEmail } from "../utils/SendEmail.js";
+import {
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+} from "../utils/SendEmail.js";
 
 const createVerificationToken = () => crypto.randomBytes(32).toString("hex");
 const createVerificationExpiry = () =>
   new Date(Date.now() + 24 * 60 * 60 * 1000);
+const createPasswordResetExpiry = () => new Date(Date.now() + 15 * 60 * 1000);
 
 export const registerUser = async (req, res) => {
   try {
@@ -182,6 +186,94 @@ export const resendVerificationEmail = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Unable to resend verification email",
+    });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found. Please register first.",
+      });
+    }
+
+    const token = createVerificationToken();
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = createPasswordResetExpiry();
+
+    await user.save();
+    await sendPasswordResetEmail(user.email, token);
+
+    res.json({
+      success: true,
+      message: "Password reset link sent. Please check your email.",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Unable to send password reset email",
+    });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { token } = req.query;
+    const { password } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Reset token is required",
+      });
+    }
+
+    if (!password || password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters long",
+      });
+    }
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired password reset link",
+      });
+    }
+
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Password reset successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Unable to reset password",
     });
   }
 };
