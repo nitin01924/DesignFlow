@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import * as crypto from "crypto";
+import jwt from "jsonwebtoken";
 import {
   sendPasswordResetEmail,
   sendVerificationEmail,
@@ -9,6 +10,15 @@ const createVerificationToken = () => crypto.randomBytes(32).toString("hex");
 const createVerificationExpiry = () =>
   new Date(Date.now() + 24 * 60 * 60 * 1000);
 const createPasswordResetExpiry = () => new Date(Date.now() + 15 * 60 * 1000);
+const createAuthToken = (userId) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET is required");
+  }
+
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
+};
 
 export const registerUser = async (req, res) => {
   try {
@@ -96,9 +106,25 @@ export const loginUser = async (req, res) => {
     success: true,
     message: "User has been logged-in",
     data: {
-      name: user.name,
-      id: user._id,
-      email: user.email,
+      user: {
+        name: user.name,
+        id: user._id,
+        email: user.email,
+      },
+      token: createAuthToken(user._id),
+    },
+  });
+};
+
+export const getMe = async (req, res) => {
+  res.json({
+    success: true,
+    user: {
+      id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role,
+      isVerified: req.user.isVerified,
     },
   });
 };
