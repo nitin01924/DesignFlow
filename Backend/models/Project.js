@@ -6,6 +6,7 @@ const projectSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: 100,
     },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
@@ -15,6 +16,7 @@ const projectSchema = new mongoose.Schema(
     thumbnail: {
       type: String,
       trim: true,
+      default: "https://...",
     },
   },
   {
