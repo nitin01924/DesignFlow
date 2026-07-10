@@ -3,6 +3,8 @@ import asyncHandler from "../middleware/asyncHandler.js";
 import mongoose from "mongoose";
 
 const isValidProjectId = (id) => mongoose.Types.ObjectId.isValid(id);
+//
+// !!==================== Create-Project ================!!
 
 export const createProject = asyncHandler(async (req, res) => {
   const { title } = req.body;
@@ -27,6 +29,8 @@ export const createProject = asyncHandler(async (req, res) => {
     project,
   });
 });
+//
+// !!==================== Get-All-projects ================!!
 
 export const getProjects = asyncHandler(async (req, res) => {
   const projects = await Project.find({ owner: req.user._id }).sort({
@@ -38,6 +42,9 @@ export const getProjects = asyncHandler(async (req, res) => {
     projects,
   });
 });
+
+//
+// !!==================== Get-specific-project ================!!
 
 export const getProjectById = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -66,6 +73,8 @@ export const getProjectById = asyncHandler(async (req, res) => {
     project,
   });
 });
+//
+// !!==================== Delete-project ================!!
 
 export const deleteProject = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -94,6 +103,8 @@ export const deleteProject = asyncHandler(async (req, res) => {
     message: "Project deleted successfully",
   });
 });
+//
+// !!==================== Rename-project ================!!
 
 export const renameProject = asyncHandler(async (req, res) => {
   const { id } = req.params;

@@ -20,6 +20,7 @@ const createAuthToken = (userId) => {
   });
 };
 
+// !!==================== Registratiion-User ====================!!
 export const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -116,6 +117,7 @@ export const loginUser = async (req, res) => {
   });
 };
 
+// !!==================== get-Me ====================!!
 export const getMe = async (req, res) => {
   res.json({
     success: true,
@@ -169,6 +171,8 @@ export const verifyEmail = async (req, res) => {
     });
   }
 };
+//
+// !!==================== Resend_verification_email================!!
 
 export const resendVerificationEmail = async (req, res) => {
   try {
@@ -215,6 +219,8 @@ export const resendVerificationEmail = async (req, res) => {
     });
   }
 };
+//
+// !!==================== Forgot_password ================!!
 
 export const forgotPassword = async (req, res) => {
   try {
@@ -254,6 +260,8 @@ export const forgotPassword = async (req, res) => {
     });
   }
 };
+//
+// !!==================== Reset_Password ================!!
 
 export const resetPassword = async (req, res) => {
   try {
