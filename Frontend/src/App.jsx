@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
@@ -15,6 +15,7 @@ import Navbar from "./components/Navbar.jsx";
 //
 //  FUNCTION - APP
 function App() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem("token"));
   const [loading, setLoading] = useState(() =>
@@ -70,6 +71,7 @@ function App() {
     setToken(null);
     setUser(null);
     setLoading(false);
+    navigate("/");
   };
 
   if (loading) return <p>Loading...</p>;
