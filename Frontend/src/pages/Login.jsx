@@ -18,7 +18,7 @@ function Login({ onAuthSuccess }) {
     try {
       const res = await resendVerification(email);
       toast.success(res.message);
-    } catch (err) {
+    } catch {
       toast.error("Failed to resend email");
     }
   };
@@ -42,7 +42,7 @@ function Login({ onAuthSuccess }) {
       if (res?.token) {
         onAuthSuccess?.(res.token);
       }
-      navigate("/under-construction");
+      navigate("/dashboard");
     } catch (error) {
       const message = error.message || "Unable to login";
       toast.error(message);

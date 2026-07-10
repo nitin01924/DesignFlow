@@ -93,7 +93,9 @@ function Register() {
             showToggle
           />
 
-          <Button type="submit">Register</Button>
+          <Button type="submit" loading={loading}>
+            Register
+          </Button>
         </form>
 
         <p onClick={() => navigate("/")}>Already have an account? Login</p>

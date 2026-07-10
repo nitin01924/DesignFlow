@@ -9,13 +9,17 @@ import VerifyEmail from "./pages/VerifyEmail.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import { Analytics } from "@vercel/analytics/react";
+import Dashboard from "./pages/Dashboard.jsx";
+import Navbar from "./components/Navbar.jsx";
 
 //
 //  FUNCTION - APP
 function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem("token"));
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() =>
+    Boolean(localStorage.getItem("token")),
+  );
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem("theme") === "dark";
   });
@@ -26,8 +30,6 @@ function App() {
 
   useEffect(() => {
     if (!token) {
-      setUser(null);
-      setLoading(false);
       return;
     }
 
@@ -43,7 +45,7 @@ function App() {
 
         const data = await res.json();
         setUser(data.user);
-      } catch (error) {
+      } catch {
         localStorage.removeItem("token");
         setToken(null);
         setUser(null);
@@ -52,7 +54,6 @@ function App() {
       }
     };
 
-    setLoading(true);
     checkAuth();
   }, [token]);
 
@@ -60,6 +61,7 @@ function App() {
     if (!nextToken) return;
 
     localStorage.setItem("token", nextToken);
+    setLoading(true);
     setToken(nextToken);
   };
 
@@ -67,6 +69,7 @@ function App() {
     localStorage.removeItem("token");
     setToken(null);
     setUser(null);
+    setLoading(false);
   };
 
   if (loading) return <p>Loading...</p>;
@@ -75,6 +78,7 @@ function App() {
     <div className={darkMode ? "dark min-h-screen" : "min-h-screen"}>
       {token && (
         <Navbar
+          user={user}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
           onLogout={handleLogout}
@@ -88,6 +92,7 @@ function App() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/under-construction" element={<UnderConstruction />} />
       </Routes>
       <ToastContainer position="top-right" autoClose={2000} />
