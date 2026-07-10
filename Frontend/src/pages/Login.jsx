@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { loginUser, resendVerification } from "../services/api";
+import { loginUser, resendVerification } from "../services/authServices";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import Input from "../components/Input";

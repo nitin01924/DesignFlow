@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import Button from "../components/Button";
 import Input from "../components/Input";
-import { resetPassword } from "../services/api";
+import { resetPassword } from "../services/authServices";
 
 function ResetPassword() {
   const navigate = useNavigate();

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Button from "../components/Button";
 import Input from "../components/Input";
-import { forgotPassword } from "../services/api";
+import { forgotPassword } from "../services/authServices";
 
 function ForgotPassword() {
   const navigate = useNavigate();
