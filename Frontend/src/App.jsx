@@ -10,6 +10,7 @@ import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import { Analytics } from "@vercel/analytics/react";
 import Dashboard from "./pages/Dashboard.jsx";
+import ProjectWorkspace from "./pages/ProjectWorkspace.jsx";
 import Navbar from "./components/Navbar.jsx";
 
 //
@@ -95,6 +96,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/project/:id" element={<ProjectWorkspace />} />
         <Route path="/under-construction" element={<UnderConstruction />} />
       </Routes>
       <ToastContainer position="top-right" autoClose={2000} />
