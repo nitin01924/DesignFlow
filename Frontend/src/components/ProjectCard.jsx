@@ -37,7 +37,7 @@ function ProjectCard({ project, onOpen, onRename, onDelete }) {
       <img
         src={thumbnail}
         alt={`${project.title} thumbnail`}
-        className="aspect-[16/10] w-full bg-gray-100 object-cover"
+        className="aspect-16/10 w-full bg-gray-100 object-cover"
       />
 
       <div className="p-4">

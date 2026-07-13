@@ -93,7 +93,7 @@ function ProjectWorkspace() {
                 <img
                   src={thumbnail}
                   alt={`${project.title} thumbnail`}
-                  className="aspect-[16/10] w-full rounded bg-gray-100 object-cover"
+                  className="aspect-16/10 w-full rounded bg-gray-100 object-cover"
                 />
 
                 <div>
@@ -116,7 +116,7 @@ function ProjectWorkspace() {
               </div>
             </section>
 
-            <section className="flex min-h-[520px] items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white text-xl font-semibold text-gray-400 shadow-sm">
+            <section className="flex min-h-130 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white text-xl font-semibold text-gray-400 shadow-sm">
               Canvas coming soon
             </section>
           </div>
