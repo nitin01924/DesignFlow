@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import CreateProjectModal from "../components/CreateProjectModal";
 import EmptyState from "../components/EmptyState";
@@ -11,6 +12,8 @@ import {
 } from "../services/projectService";
 
 function Dashboard() {
+  const navigate = useNavigate();
+
   // useState stores UI state that can change after render: projects, loading, errors, and modal visibility.
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,6 +66,10 @@ function Dashboard() {
     await createProject(title);
     toast.success("Project created");
     await loadProjects();
+  };
+
+  const handleOpenProject = (project) => {
+    navigate(`/project/${project._id}`);
   };
 
   const handleRenameProject = async (project) => {
@@ -139,6 +146,7 @@ function Dashboard() {
               <ProjectCard
                 key={project._id}
                 project={project}
+                onOpen={handleOpenProject}
                 onRename={handleRenameProject}
                 onDelete={handleDeleteProject}
               />

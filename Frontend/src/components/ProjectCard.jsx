@@ -13,14 +13,27 @@ const formatUpdatedDate = (date) => {
   }).format(new Date(date));
 };
 
-function ProjectCard({ project, onRename, onDelete }) {
+function ProjectCard({ project, onOpen, onRename, onDelete }) {
   const thumbnail =
     project.thumbnail && project.thumbnail !== "https://..."
       ? project.thumbnail
       : DEFAULT_THUMBNAIL;
 
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onOpen(project);
+    }
+  };
+
   return (
-    <article className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <article
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(project)}
+      onKeyDown={handleKeyDown}
+      className="cursor-pointer overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+    >
       <img
         src={thumbnail}
         alt={`${project.title} thumbnail`}
@@ -35,19 +48,25 @@ function ProjectCard({ project, onRename, onDelete }) {
           Updated {formatUpdatedDate(project.updatedAt)}
         </p>
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex gap-2" onClick={(event) => event.stopPropagation()}>
           {/* Callback props let this reusable card ask the parent to change shared project state. */}
           <Button
             type="button"
             variant="secondary"
-            onClick={() => onRename(project)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onRename(project);
+            }}
           >
             Rename
           </Button>
           <Button
             type="button"
             variant="danger"
-            onClick={() => onDelete(project)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete(project);
+            }}
           >
             Delete
           </Button>
