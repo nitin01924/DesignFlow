@@ -138,7 +138,9 @@ function Dashboard() {
           </div>
         )}
 
-        {!isLoading && !error && projects.length === 0 && <EmptyState />}
+        {!isLoading && !error && projects.length === 0 && (
+          <EmptyState onCreate={() => setIsCreateModalOpen(true)} />
+        )}
 
         {!isLoading && !error && projects.length > 0 && (
           <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
