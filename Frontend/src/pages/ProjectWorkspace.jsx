@@ -1,19 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { getProject } from "../services/projectService";
-
-const DEFAULT_THUMBNAIL =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='400' viewBox='0 0 640 400'%3E%3Crect width='640' height='400' fill='%23f1f5f9'/%3E%3Cpath d='M118 291h404L397 149l-89 101-57-65z' fill='%23cbd5e1'/%3E%3Ccircle cx='217' cy='136' r='42' fill='%2394a3b8'/%3E%3C/svg%3E";
-
-const formatDate = (date) => {
-  if (!date) return "Not available";
-
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(date));
-};
+import CanvasArea from "../components/editor/CanvasArea";
+import EditorNavbar from "../components/editor/EditorNavbar";
+import EditorSidebar from "../components/editor/EditorSidebar";
+import PropertiesPanel from "../components/editor/PropertiesPanel";
 
 function ProjectWorkspace() {
   // useParams reads dynamic values from the route, so /project/:id gives us this project's id.
@@ -57,68 +48,33 @@ function ProjectWorkspace() {
     };
   }, [id]);
 
-  const thumbnail =
-    project?.thumbnail && project.thumbnail !== "https://..."
-      ? project.thumbnail
-      : DEFAULT_THUMBNAIL;
-
   return (
-    <main className="min-h-screen bg-gray-50 px-6 py-8 text-gray-900">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-6">
-          <Link
-            to="/dashboard"
-            className="text-sm font-semibold text-blue-600 transition hover:text-blue-700"
-          >
-            Back to Dashboard
-          </Link>
-        </div>
-
+    <main className="min-h-[calc(100vh-73px)] bg-slate-100 text-slate-900">
+      <div className="flex min-h-[calc(100vh-73px)] items-center justify-center">
         {isLoading && (
-          <div className="rounded-lg border border-gray-200 bg-white p-8 text-center text-gray-500 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500 shadow-sm" role="status">
             Loading project...
           </div>
         )}
 
         {!isLoading && error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-red-700" role="alert">
             {error}
           </div>
         )}
 
         {!isLoading && !error && project && (
-          <div className="space-y-6">
-            <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-              <div className="grid gap-6 p-6 md:grid-cols-[280px_1fr]">
-                <img
-                  src={thumbnail}
-                  alt={`${project.title} thumbnail`}
-                  className="aspect-16/10 w-full rounded bg-gray-100 object-cover"
-                />
+          // Each editor region owns one concern, making it reusable and allowing future editing features to evolve independently.
+          <div className="flex min-h-[calc(100vh-73px)] w-full flex-col bg-white">
+            {/* Props keep data ownership in this page while presenting the same project consistently across editor regions. */}
+            <EditorNavbar projectTitle={project.title} />
 
-                <div>
-                  <h1 className="text-3xl font-bold">{project.title}</h1>
-                  <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                    <div>
-                      <dt className="font-semibold text-gray-700">Created</dt>
-                      <dd className="mt-1 text-gray-500">
-                        {formatDate(project.createdAt)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="font-semibold text-gray-700">Updated</dt>
-                      <dd className="mt-1 text-gray-500">
-                        {formatDate(project.updatedAt)}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-              </div>
-            </section>
-
-            <section className="flex min-h-130 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white text-xl font-semibold text-gray-400 shadow-sm">
-              Canvas coming soon
-            </section>
+            {/* This composition leaves clear extension points for future canvas state, tools, and element properties. */}
+            <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[6rem_minmax(0,1fr)_18rem]">
+              <EditorSidebar />
+              <CanvasArea />
+              <PropertiesPanel project={project} />
+            </div>
           </div>
         )}
       </div>
