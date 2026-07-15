@@ -40,14 +40,14 @@ function CreateProjectModal({ isOpen, onClose, onCreate }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 dark:bg-black/70">
+      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:border dark:border-slate-700 dark:bg-slate-900">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">New Project</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">New Project</h2>
           <button
             type="button"
             onClick={handleClose}
-            className="rounded px-2 py-1 text-xl leading-none text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+            className="rounded px-2 py-1 text-xl leading-none text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
             aria-label="Close create project modal"
           >
             x
@@ -62,7 +62,7 @@ function CreateProjectModal({ isOpen, onClose, onCreate }) {
             placeholder="Website redesign"
           />
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           <div className="flex justify-end gap-3">
             <Button type="button" variant="secondary" onClick={handleClose}>

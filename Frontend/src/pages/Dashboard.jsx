@@ -109,12 +109,12 @@ function Dashboard() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 px-6 py-8 text-gray-900">
+    <main className="min-h-screen bg-gray-50 px-6 py-8 text-gray-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
       <div className="mx-auto max-w-6xl">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="mt-1 text-gray-500">Manage your design projects.</p>
+            <p className="mt-1 text-gray-500 dark:text-slate-400">Manage your design projects.</p>
           </div>
 
           <button
@@ -127,13 +127,13 @@ function Dashboard() {
         </div>
 
         {isLoading && (
-          <div className="rounded-lg border border-gray-200 bg-white p-8 text-center text-gray-500 shadow-sm">
+          <div className="rounded-lg border border-gray-200 bg-white p-8 text-center text-gray-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
             Loading projects...
           </div>
         )}
 
         {!isLoading && error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
             {error}
           </div>
         )}

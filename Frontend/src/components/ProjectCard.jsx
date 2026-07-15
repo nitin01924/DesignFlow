@@ -32,19 +32,19 @@ function ProjectCard({ project, onOpen, onRename, onDelete }) {
       tabIndex={0}
       onClick={() => onOpen(project)}
       onKeyDown={handleKeyDown}
-      className="cursor-pointer overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      className="cursor-pointer overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-slate-800 dark:bg-slate-900 dark:focus:ring-offset-slate-950"
     >
       <img
         src={thumbnail}
         alt={`${project.title} thumbnail`}
-        className="aspect-16/10 w-full bg-gray-100 object-cover"
+        className="aspect-16/10 w-full bg-gray-100 object-cover dark:bg-slate-800"
       />
 
       <div className="p-4">
-        <h3 className="line-clamp-1 text-base font-semibold text-gray-900">
+        <h3 className="line-clamp-1 text-base font-semibold text-gray-900 dark:text-slate-100">
           {project.title}
         </h3>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
           Updated {formatUpdatedDate(project.updatedAt)}
         </p>
 

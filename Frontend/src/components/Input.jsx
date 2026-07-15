@@ -13,15 +13,15 @@ const Input = ({
   const isPassword = type === "password";
 
   return (
-    <div className="flex flex-col gap-1 relative">
-      <label className="text-sm font-medium">{label}</label>
+    <div className="relative flex flex-col gap-1">
+      <label className="text-sm font-medium dark:text-slate-200">{label}</label>
 
       <input
         type={isPassword && showPassword ? "text" : type}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="border px-3 py-2 rounded outline-none focus:ring-2 focus:ring-blue-400"
+        className="rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
       />
 
       {isPassword && showToggle && (
