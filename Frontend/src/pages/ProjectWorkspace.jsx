@@ -49,23 +49,23 @@ function ProjectWorkspace() {
   }, [id]);
 
   return (
-    <main className="min-h-[calc(100vh-73px)] bg-slate-100 text-slate-900">
+    <main className="min-h-[calc(100vh-73px)] bg-slate-100 text-slate-900 transition-colors dark:bg-slate-900 dark:text-slate-100">
       <div className="flex min-h-[calc(100vh-73px)] items-center justify-center">
         {isLoading && (
-          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500 shadow-sm" role="status">
+          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" role="status">
             Loading project...
           </div>
         )}
 
         {!isLoading && error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-red-700" role="alert">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300" role="alert">
             {error}
           </div>
         )}
 
         {!isLoading && !error && project && (
           // Each editor region owns one concern, making it reusable and allowing future editing features to evolve independently.
-          <div className="flex min-h-[calc(100vh-73px)] w-full flex-col bg-white">
+          <div className="flex min-h-[calc(100vh-73px)] w-full flex-col bg-white dark:bg-slate-950">
             {/* Props keep data ownership in this page while presenting the same project consistently across editor regions. */}
             <EditorNavbar projectTitle={project.title} />
 

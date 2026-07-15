@@ -17,14 +17,14 @@ const tools = [
 
 function EditorSidebar() {
   return (
-    <aside className="border-r border-slate-200 bg-white" aria-label="Editor tools">
+    <aside className="border-r border-slate-200 bg-white transition-colors dark:border-slate-800 dark:bg-slate-950" aria-label="Editor tools">
       <div className="flex h-full gap-1 overflow-x-auto p-2 md:w-24 md:flex-col md:gap-2 md:overflow-x-visible md:py-4">
         {tools.map((tool) => (
           <button
             key={tool.label}
             type="button"
             title={`${tool.label} tools coming soon`}
-            className="group flex min-w-18 flex-col items-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium text-slate-500 transition hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 md:min-w-0"
+            className="group flex min-w-18 flex-col items-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium text-slate-500 transition hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:text-slate-400 dark:hover:bg-blue-950/60 dark:hover:text-blue-300 md:min-w-0"
           >
             <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
               <path d={tool.path} strokeLinecap="round" strokeLinejoin="round" />
