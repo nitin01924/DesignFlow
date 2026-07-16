@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getProject } from "../services/projectService";
+import { toast } from "react-toastify";
+import { getProject, uploadProjectImage } from "../services/projectService";
 import CanvasArea from "../components/editor/CanvasArea";
 import EditorNavbar from "../components/editor/EditorNavbar";
 import EditorSidebar from "../components/editor/EditorSidebar";
@@ -14,6 +15,7 @@ function ProjectWorkspace({ user }) {
   const [project, setProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     // useEffect runs after the component mounts; fetching here keeps rendering separate from backend side effects.
@@ -48,6 +50,22 @@ function ProjectWorkspace({ user }) {
     };
   }, [id]);
 
+  const handleImageUpload = async (file) => {
+    try {
+      setIsUploading(true);
+      const updatedProject = await uploadProjectImage(id, file);
+
+      // The workspace owns project state because the sidebar changes it and the
+      // canvas and properties panel both consume the updated project data.
+      setProject(updatedProject);
+      toast.success("Image uploaded");
+    } catch (err) {
+      toast.error(err.message || "Unable to upload image");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <main className="min-h-[calc(100vh-73px)] bg-slate-100 text-slate-900 transition-colors dark:bg-slate-900 dark:text-slate-100">
       <div className="flex min-h-[calc(100vh-73px)] items-center justify-center">
@@ -71,8 +89,14 @@ function ProjectWorkspace({ user }) {
 
             {/* This composition leaves clear extension points for future canvas state, tools, and element properties. */}
             <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[6rem_minmax(0,1fr)_18rem]">
-              <EditorSidebar />
-              <CanvasArea />
+              <EditorSidebar
+                onUpload={handleImageUpload}
+                isUploading={isUploading}
+              />
+              <CanvasArea
+                canvasImage={project.canvasImage}
+                projectTitle={project.title}
+              />
               <PropertiesPanel project={project} />
             </div>
           </div>

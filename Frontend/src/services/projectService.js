@@ -33,3 +33,15 @@ export const deleteProject = async (projectId) => {
     method: "DELETE",
   });
 };
+
+export const uploadProjectImage = async (projectId, image) => {
+  const formData = new FormData();
+  formData.append("image", image);
+
+  const result = await apiRequest(`/api/projects/${projectId}/upload`, {
+    method: "POST",
+    body: formData,
+  });
+
+  return result.project;
+};
