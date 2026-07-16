@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
 
-function EditorNavbar({ projectTitle }) {
+function EditorNavbar({ user, projectTitle }) {
+  const userName = user?.name?.trim() || "User";
+  const userInitial = userName.charAt(0).toUpperCase();
+
   return (
     <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 transition-colors dark:border-slate-800 dark:bg-slate-950 sm:px-6">
       <div className="flex min-w-0 items-center gap-3">
@@ -9,13 +12,26 @@ function EditorNavbar({ projectTitle }) {
           aria-label="Back to dashboard"
           className="grid size-9 shrink-0 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
         >
-          <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="m15 18-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+          <svg
+            viewBox="0 0 24 24"
+            className="size-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <path
+              d="m15 18-6-6 6-6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </Link>
 
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">Project</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Design Project
+          </p>
           <h1 className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100 sm:text-base">
             {projectTitle}
           </h1>
@@ -41,10 +57,10 @@ function EditorNavbar({ projectTitle }) {
         </button>
         <div
           className="grid size-9 place-items-center rounded-full bg-slate-900 text-xs font-bold text-white dark:bg-blue-600"
-          aria-label="User profile placeholder"
-          title="User profile"
+          aria-label={`${userName} profile`}
+          title={userName}
         >
-          U
+          {userInitial}
         </div>
       </div>
     </header>

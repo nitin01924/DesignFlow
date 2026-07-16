@@ -6,7 +6,7 @@ import EditorNavbar from "../components/editor/EditorNavbar";
 import EditorSidebar from "../components/editor/EditorSidebar";
 import PropertiesPanel from "../components/editor/PropertiesPanel";
 
-function ProjectWorkspace() {
+function ProjectWorkspace({ user }) {
   // useParams reads dynamic values from the route, so /project/:id gives us this project's id.
   const { id } = useParams();
 
@@ -67,7 +67,7 @@ function ProjectWorkspace() {
           // Each editor region owns one concern, making it reusable and allowing future editing features to evolve independently.
           <div className="flex min-h-[calc(100vh-73px)] w-full flex-col bg-white dark:bg-slate-950">
             {/* Props keep data ownership in this page while presenting the same project consistently across editor regions. */}
-            <EditorNavbar projectTitle={project.title} />
+            <EditorNavbar user={user} projectTitle={project.title} />
 
             {/* This composition leaves clear extension points for future canvas state, tools, and element properties. */}
             <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[6rem_minmax(0,1fr)_18rem]">

@@ -104,7 +104,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/project/:id" element={<ProjectWorkspace />} />
+        <Route path="/project/:id" element={<ProjectWorkspace user={user} />} />
         <Route path="/under-construction" element={<UnderConstruction />} />
       </Routes>
       <ToastContainer
