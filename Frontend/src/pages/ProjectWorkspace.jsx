@@ -93,6 +93,7 @@ function ProjectWorkspace({ user }) {
                 onUpload={handleImageUpload}
                 isUploading={isUploading}
               />
+              {/* The workspace provides project data; CanvasArea owns all Fabric state and interactions. */}
               <CanvasArea
                 canvasImage={project.canvasImage}
                 projectTitle={project.title}
