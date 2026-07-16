@@ -18,6 +18,10 @@ const projectSchema = new mongoose.Schema(
       trim: true,
       default: "https://...",
     },
+    canvasImage: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,

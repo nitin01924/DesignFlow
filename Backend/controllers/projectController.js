@@ -1,6 +1,7 @@
 import Project from "../models/Project.js";
 import asyncHandler from "../middleware/asyncHandler.js";
 import mongoose from "mongoose";
+import { uploadImageBuffer } from "../config/cloudinary.js";
 
 const isValidProjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 //
@@ -143,6 +144,50 @@ export const renameProject = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: "Project renamed successfully",
+    project,
+  });
+});
+
+//
+// !!==================== Upload-project-image ================!!
+
+export const uploadProjectImage = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!isValidProjectId(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid project id",
+    });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({
+      success: false,
+      message: "An image is required",
+    });
+  }
+
+  // Querying with both fields prevents users from uploading to projects they do not own.
+  const project = await Project.findOne({
+    _id: id,
+    owner: req.user._id,
+  });
+
+  if (!project) {
+    return res.status(404).json({
+      success: false,
+      message: "Project not found",
+    });
+  }
+
+  const uploadResult = await uploadImageBuffer(req.file.buffer);
+  project.canvasImage = uploadResult.secure_url;
+  await project.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Image uploaded successfully",
     project,
   });
 });
