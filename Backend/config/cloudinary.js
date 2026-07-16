@@ -1,5 +1,12 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import { fileURLToPath } from "node:url";
 import { v2 as cloudinary } from "cloudinary";
+
+// Resolve the backend environment file from this module instead of process.cwd(),
+// so credentials load whether the server starts inside Backend or from the repo root.
+dotenv.config({
+  path: fileURLToPath(new URL("../.env", import.meta.url)),
+});
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
