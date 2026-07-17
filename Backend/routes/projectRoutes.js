@@ -12,6 +12,7 @@ import { uploadProjectImage as receiveProjectImage } from "../middleware/uploadM
 
 const router = express.Router();
 
+// .use(protect) will be run each time when the project routes will be use to protect the api.
 router.use(protect);
 
 router.route("/").get(getProjects).post(createProject);

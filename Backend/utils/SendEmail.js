@@ -95,6 +95,9 @@ export const sendVerificationEmail = async (email, token) => {
   }
 };
 
+//
+// !!==================== Reset-Password-Email ====================!!
+//
 export const sendPasswordResetEmail = async (email, token) => {
   const apiInstance = getEmailClient();
 
@@ -152,7 +155,7 @@ export const sendPasswordResetEmail = async (email, token) => {
         <hr style="margin: 20px 0;" />
 
         <p style="font-size: 12px; color: #777;">
-          — Design Flow Team
+          — Design Flow Team 🧧
         </p>
       </div>
       `,
