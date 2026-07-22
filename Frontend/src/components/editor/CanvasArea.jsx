@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Canvas, FabricImage } from "fabric";
+import EditorToolbar from "./EditorToolbar";
 
 const fitImageToCanvas = (image, canvas) => {
   const imageWidth = image.width || 1;
@@ -25,6 +26,19 @@ function CanvasArea({ canvasImage, projectTitle }) {
   const canvasContainerRef = useRef(null);
   const fabricCanvasRef = useRef(null);
   const fabricImageRef = useRef(null);
+  const [selection, setSelection] = useState({
+    canvas: null,
+    object: null,
+    revision: 0,
+  });
+
+  const handleSelectionChange = (object) => {
+    setSelection((current) => ({
+      canvas: current.canvas,
+      object,
+      revision: current.revision + 1,
+    }));
+  };
 
   useEffect(() => {
     if (!canvasElementRef.current || !canvasContainerRef.current) return;
@@ -36,6 +50,19 @@ function CanvasArea({ canvasImage, projectTitle }) {
       selection: true,
     });
     fabricCanvasRef.current = fabricCanvas;
+    setSelection((current) => ({
+      canvas: fabricCanvas,
+      object: null,
+      revision: current.revision + 1,
+    }));
+
+    const syncSelection = () => {
+      handleSelectionChange(fabricCanvas.getActiveObject() || null);
+    };
+
+    fabricCanvas.on("selection:created", syncSelection);
+    fabricCanvas.on("selection:updated", syncSelection);
+    fabricCanvas.on("selection:cleared", syncSelection);
 
     const resizeCanvas = () => {
       const { width, height } =
@@ -59,6 +86,9 @@ function CanvasArea({ canvasImage, projectTitle }) {
 
     return () => {
       resizeObserver.disconnect();
+      fabricCanvas.off("selection:created", syncSelection);
+      fabricCanvas.off("selection:updated", syncSelection);
+      fabricCanvas.off("selection:cleared", syncSelection);
       fabricImageRef.current = null;
       fabricCanvasRef.current = null;
       void fabricCanvas.dispose();
@@ -73,8 +103,10 @@ function CanvasArea({ canvasImage, projectTitle }) {
 
     const loadCanvasImage = async () => {
       if (fabricImageRef.current) {
+        fabricCanvas.discardActiveObject();
         fabricCanvas.remove(fabricImageRef.current);
         fabricImageRef.current = null;
+        handleSelectionChange(null);
       }
 
       if (!canvasImage) {
@@ -120,10 +152,16 @@ function CanvasArea({ canvasImage, projectTitle }) {
   }, [canvasImage]);
 
   return (
-    <section
-      className="flex min-h-96 min-w-0 items-center justify-center overflow-auto bg-slate-100 p-6 transition-colors dark:bg-slate-900 sm:p-10"
-      aria-label="Design canvas workspace"
-    >
+    <div className="flex min-h-0 min-w-0 flex-col">
+      <EditorToolbar
+        canvas={selection.canvas}
+        selectedObject={selection.object}
+        onSelectionChange={handleSelectionChange}
+      />
+      <section
+        className="flex min-h-96 min-w-0 flex-1 items-center justify-center overflow-auto bg-slate-100 p-6 transition-colors dark:bg-slate-900 sm:p-10"
+        aria-label="Design canvas workspace"
+      >
       {/* ProjectWorkspace only supplies project data. Keeping Fabric objects in
           refs separates React state from Fabric state and avoids competing render models. */}
       <div
@@ -161,7 +199,8 @@ function CanvasArea({ canvasImage, projectTitle }) {
           </div>
         )}
       </div>
-    </section>
+      </section>
+    </div>
   );
 }
 
