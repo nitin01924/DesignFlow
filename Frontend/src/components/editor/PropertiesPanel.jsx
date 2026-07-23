@@ -1,3 +1,9 @@
+import ImagePropertiesPanel from "./properties/ImagePropertiesPanel";
+
+const propertyPanelByType = {
+  image: ImagePropertiesPanel,
+};
+
 function formatDate(date) {
   if (!date) return "Not available";
 
@@ -13,7 +19,12 @@ function formatDate(date) {
   }).format(parsedDate);
 }
 
-function PropertiesPanel({ project }) {
+function PropertiesPanel({ project, editorState, onObjectChange }) {
+  const selectedObject = editorState?.selectedObject;
+  const SelectedObjectPanel = selectedObject
+    ? propertyPanelByType[selectedObject.type]
+    : null;
+
   return (
     <aside className="border-l border-slate-200 bg-white transition-colors dark:border-slate-800 dark:bg-slate-950" aria-label="Project properties">
       <div className="h-full w-full overflow-y-auto p-5 md:w-72">
@@ -35,8 +46,26 @@ function PropertiesPanel({ project }) {
 
         <div className="py-5">
           <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Properties</h3>
-          <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-xs leading-5 text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
-            Select a canvas element to view its properties.
+          <div className="mt-4">
+            {SelectedObjectPanel && (
+              <SelectedObjectPanel
+                canvas={editorState.canvas}
+                object={selectedObject}
+                onObjectChange={onObjectChange}
+              />
+            )}
+
+            {!selectedObject && (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-xs leading-5 text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
+                Select a canvas element to view its properties.
+              </div>
+            )}
+
+            {selectedObject && !SelectedObjectPanel && (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-xs leading-5 text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
+                Properties for this object type are coming soon.
+              </div>
+            )}
           </div>
         </div>
       </div>

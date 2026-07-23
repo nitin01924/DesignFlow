@@ -65,7 +65,18 @@ function EditorToolbar({ canvas, selectedObject, onSelectionChange }) {
     clone.set({
       left: (selectedObject.left || 0) + 20,
       top: (selectedObject.top || 0) + 20,
+      aspectRatioLocked: selectedObject.aspectRatioLocked,
+      lockedAspectRatio: selectedObject.lockedAspectRatio,
     });
+    if (selectedObject.type === "image") {
+      const locked = selectedObject.aspectRatioLocked !== false;
+      clone.setControlsVisibility({
+        mt: !locked,
+        mb: !locked,
+        ml: !locked,
+        mr: !locked,
+      });
+    }
     canvas.add(clone);
     canvas.setActiveObject(clone);
     finishAction(clone);

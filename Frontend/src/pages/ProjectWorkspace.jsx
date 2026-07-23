@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { getProject, uploadProjectImage } from "../services/projectService";
@@ -16,6 +16,27 @@ function ProjectWorkspace({ user }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [editorState, setEditorState] = useState({
+    canvas: null,
+    selectedObject: null,
+    revision: 0,
+  });
+
+  const handleEditorStateChange = useCallback(({ canvas, selectedObject }) => {
+    setEditorState((current) => ({
+      canvas,
+      selectedObject,
+      revision: current.revision + 1,
+    }));
+  }, []);
+
+  const handleObjectChange = useCallback((selectedObject) => {
+    setEditorState((current) => ({
+      ...current,
+      selectedObject,
+      revision: current.revision + 1,
+    }));
+  }, []);
 
   useEffect(() => {
     // useEffect runs after the component mounts; fetching here keeps rendering separate from backend side effects.
@@ -97,8 +118,13 @@ function ProjectWorkspace({ user }) {
               <CanvasArea
                 canvasImage={project.canvasImage}
                 projectTitle={project.title}
+                onEditorStateChange={handleEditorStateChange}
               />
-              <PropertiesPanel project={project} />
+              <PropertiesPanel
+                project={project}
+                editorState={editorState}
+                onObjectChange={handleObjectChange}
+              />
             </div>
           </div>
         )}
