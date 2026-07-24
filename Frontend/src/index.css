@@ -19,6 +19,11 @@
   .mobile-properties-sheet {
     animation: mobile-properties-enter 240ms ease-out;
   }
+
+  .editor-layout:has(.mobile-properties-sheet[data-expanded="true"])
+    .mobile-canvas-workspace {
+    padding-bottom: 36dvh;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

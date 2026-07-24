@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Canvas, FabricImage } from "fabric";
 import EditorToolbar from "./EditorToolbar";
+import MobileObjectToolbar from "./mobile/MobileObjectToolbar";
 
 const fitImageToCanvas = (image, canvas) => {
   const imageWidth = image.width || 1;
@@ -166,6 +167,7 @@ function CanvasArea({ canvasImage, projectTitle, onEditorStateChange }) {
             lockScalingX: false,
             lockScalingY: false,
             aspectRatioLocked: true,
+            touchCornerSize: 36,
           },
         );
 
@@ -200,14 +202,21 @@ function CanvasArea({ canvasImage, projectTitle, onEditorStateChange }) {
   }, [canvasImage, handleSelectionChange]);
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-col">
-      <EditorToolbar
+    <div className="relative flex h-full min-h-0 min-w-0 flex-col">
+      <div className="hidden md:block">
+        <EditorToolbar
+          canvas={selection.canvas}
+          selectedObject={selection.object}
+          onSelectionChange={handleSelectionChange}
+        />
+      </div>
+      <MobileObjectToolbar
         canvas={selection.canvas}
         selectedObject={selection.object}
         onSelectionChange={handleSelectionChange}
       />
       <section
-        className="flex min-h-96 min-w-0 flex-1 items-center justify-center overflow-auto bg-slate-100 p-6 transition-colors dark:bg-slate-900 sm:p-10"
+        className="mobile-canvas-workspace flex min-h-0 min-w-0 flex-1 touch-none items-center justify-center overflow-hidden bg-slate-100 p-3 transition-[padding,background-color] duration-300 dark:bg-slate-900 md:min-h-96 md:overflow-auto md:p-10"
         aria-label="Design canvas workspace"
       >
       {/* ProjectWorkspace only supplies project data. Keeping Fabric objects in

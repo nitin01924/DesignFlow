@@ -1,8 +1,13 @@
 import { useState } from "react";
 import ImagePropertiesPanel from "./properties/ImagePropertiesPanel";
+import MobileImagePropertiesPanel from "./properties/MobileImagePropertiesPanel";
 
 const propertyPanelByType = {
   image: ImagePropertiesPanel,
+};
+
+const mobilePropertyPanelByType = {
+  image: MobileImagePropertiesPanel,
 };
 
 function formatDate(date) {
@@ -51,6 +56,9 @@ function PropertiesPanel({ project, editorState, onObjectChange }) {
   const SelectedObjectPanel = selectedObject
     ? propertyPanelByType[selectedObject.type]
     : null;
+  const MobileSelectedObjectPanel = selectedObject
+    ? mobilePropertyPanelByType[selectedObject.type]
+    : null;
 
   return (
     <>
@@ -92,9 +100,10 @@ function PropertiesPanel({ project, editorState, onObjectChange }) {
       {selectedObject && (
         <aside
           className={`mobile-properties-sheet fixed inset-x-0 bottom-0 z-40 flex overflow-hidden rounded-t-2xl border border-b-0 border-slate-200 bg-white shadow-[0_-12px_36px_rgba(15,23,42,0.18)] transition-[height] duration-300 ease-out dark:border-slate-700 dark:bg-slate-950 md:hidden ${
-            isMobileExpanded ? "h-[42dvh] flex-col" : "h-14"
+            isMobileExpanded ? "h-[36dvh] flex-col" : "h-14"
           }`}
           aria-label="Selected object properties"
+          data-expanded={isMobileExpanded}
         >
           <button
             type="button"
@@ -135,7 +144,7 @@ function PropertiesPanel({ project, editorState, onObjectChange }) {
             <ObjectProperties
               editorState={editorState}
               selectedObject={selectedObject}
-              SelectedObjectPanel={SelectedObjectPanel}
+              SelectedObjectPanel={MobileSelectedObjectPanel}
               onObjectChange={onObjectChange}
             />
           </div>
