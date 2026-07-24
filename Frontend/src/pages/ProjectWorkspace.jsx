@@ -6,6 +6,7 @@ import CanvasArea from "../components/editor/CanvasArea";
 import EditorNavbar from "../components/editor/EditorNavbar";
 import EditorSidebar from "../components/editor/EditorSidebar";
 import PropertiesPanel from "../components/editor/PropertiesPanel";
+import MobileEditorHeader from "../components/editor/mobile/MobileEditorHeader";
 
 function ProjectWorkspace({ user }) {
   // useParams reads dynamic values from the route, so /project/:id gives us this project's id.
@@ -88,8 +89,8 @@ function ProjectWorkspace({ user }) {
   };
 
   return (
-    <main className="min-h-[calc(100vh-73px)] bg-slate-100 text-slate-900 transition-colors dark:bg-slate-900 dark:text-slate-100">
-      <div className="flex min-h-[calc(100vh-73px)] items-center justify-center">
+    <main className="h-dvh overflow-hidden bg-slate-100 text-slate-900 transition-colors dark:bg-slate-900 dark:text-slate-100 md:h-auto md:min-h-[calc(100vh-73px)] md:overflow-visible">
+      <div className="flex h-full items-center justify-center md:min-h-[calc(100vh-73px)]">
         {isLoading && (
           <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400" role="status">
             Loading project...
@@ -104,12 +105,17 @@ function ProjectWorkspace({ user }) {
 
         {!isLoading && !error && project && (
           // Each editor region owns one concern, making it reusable and allowing future editing features to evolve independently.
-          <div className="flex min-h-[calc(100vh-73px)] w-full flex-col bg-white dark:bg-slate-950">
+          <div className="flex h-full w-full flex-col bg-white dark:bg-slate-950 md:min-h-[calc(100vh-73px)]">
             {/* Props keep data ownership in this page while presenting the same project consistently across editor regions. */}
             <EditorNavbar user={user} projectTitle={project.title} />
+            <MobileEditorHeader
+              projectTitle={project.title}
+              onUpload={handleImageUpload}
+              isUploading={isUploading}
+            />
 
             {/* This composition leaves clear extension points for future canvas state, tools, and element properties. */}
-            <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[6rem_minmax(0,1fr)_18rem]">
+            <div className="editor-layout grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[6rem_minmax(0,1fr)_18rem]">
               <EditorSidebar
                 onUpload={handleImageUpload}
                 isUploading={isUploading}

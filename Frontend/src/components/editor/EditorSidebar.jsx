@@ -38,7 +38,7 @@ function EditorSidebar({ onUpload, isUploading }) {
   };
 
   return (
-    <aside className="border-r border-slate-200 bg-white transition-colors dark:border-slate-800 dark:bg-slate-950" aria-label="Editor tools">
+    <aside className="hidden border-r border-slate-200 bg-white transition-colors dark:border-slate-800 dark:bg-slate-950 md:block" aria-label="Editor tools">
       <input
         ref={fileInputRef}
         type="file"

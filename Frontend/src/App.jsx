@@ -1,4 +1,4 @@
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
@@ -17,6 +17,8 @@ import Navbar from "./components/Navbar.jsx";
 //  FUNCTION - APP
 function App() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isProjectWorkspace = location.pathname.startsWith("/project/");
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem("token"));
   const [loading, setLoading] = useState(() =>
@@ -88,12 +90,14 @@ function App() {
   return (
     <div className={darkMode ? "dark min-h-screen bg-slate-950" : "min-h-screen"}>
       {token && (
-        <Navbar
-          user={user}
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
-          onLogout={handleLogout}
-        />
+        <div className={isProjectWorkspace ? "hidden md:block" : ""}>
+          <Navbar
+            user={user}
+            darkMode={darkMode}
+            setDarkMode={setDarkMode}
+            onLogout={handleLogout}
+          />
+        </div>
       )}
 
       <Routes>

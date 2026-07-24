@@ -5,7 +5,7 @@ function EditorNavbar({ user, projectTitle }) {
   const userInitial = userName.charAt(0).toUpperCase();
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 transition-colors dark:border-slate-800 dark:bg-slate-950 sm:px-6">
+    <header className="hidden h-16 shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 transition-colors dark:border-slate-800 dark:bg-slate-950 sm:px-6 md:flex">
       <div className="flex min-w-0 items-center gap-3">
         <Link
           to="/dashboard"
