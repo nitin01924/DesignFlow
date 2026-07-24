@@ -3,3 +3,27 @@
 /* Tailwind v4 defaults dark mode to the system media query. DesignFlow uses
    an explicit class so the user's saved toggle controls every descendant. */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Mobile-only entrance motion for the contextual properties sheet. */
+@media (max-width: 767px) {
+  @keyframes mobile-properties-enter {
+    from {
+      transform: translateY(100%);
+    }
+
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .mobile-properties-sheet {
+    animation: mobile-properties-enter 240ms ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-properties-sheet {
+    animation: none;
+    transition: none;
+  }
+}
