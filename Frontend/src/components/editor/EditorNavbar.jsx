@@ -1,6 +1,12 @@
 import { Link } from "react-router-dom";
 
-function EditorNavbar({ user, projectTitle }) {
+const statusLabels = {
+  saving: "Saving...",
+  saved: "Saved",
+  failed: "Failed",
+};
+
+function EditorNavbar({ user, projectTitle, onSave, saveStatus }) {
   const userName = user?.name?.trim() || "User";
   const userInitial = userName.charAt(0).toUpperCase();
 
@@ -39,11 +45,23 @@ function EditorNavbar({ user, projectTitle }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <span
+          className={`text-xs font-medium ${
+            saveStatus === "failed"
+              ? "text-red-600 dark:text-red-400"
+              : "text-slate-500 dark:text-slate-400"
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          {statusLabels[saveStatus]}
+        </span>
         <button
           type="button"
-          disabled
-          title="Saving will be available in a future update"
-          className="cursor-not-allowed rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-400 dark:border-slate-700 dark:text-slate-600 sm:px-4"
+          onClick={onSave}
+          disabled={saveStatus === "saving"}
+          title="Save project (Ctrl+S)"
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 sm:px-4"
         >
           Save
         </button>

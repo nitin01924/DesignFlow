@@ -149,6 +149,65 @@ export const renameProject = asyncHandler(async (req, res) => {
 });
 
 //
+// !!==================== Save-project-canvas ================!!
+
+export const saveProjectCanvas = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { canvasData, canvasWidth, canvasHeight } = req.body;
+
+  if (!isValidProjectId(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid project id",
+    });
+  }
+
+  if (
+    !canvasData ||
+    typeof canvasData !== "object" ||
+    Array.isArray(canvasData) ||
+    !Array.isArray(canvasData.objects)
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "Valid Fabric canvas data is required",
+    });
+  }
+
+  const width = Number(canvasWidth);
+  const height = Number(canvasHeight);
+  if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Valid canvas dimensions are required",
+    });
+  }
+
+  const project = await Project.findOneAndUpdate(
+    { _id: id, owner: req.user._id },
+    {
+      canvasData,
+      canvasWidth: width,
+      canvasHeight: height,
+    },
+    { new: true, runValidators: true },
+  );
+
+  if (!project) {
+    return res.status(404).json({
+      success: false,
+      message: "Project not found",
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Project saved successfully",
+    project,
+  });
+});
+
+//
 // !!==================== Upload-project-image ================!!
 
 export const uploadProjectImage = asyncHandler(async (req, res) => {

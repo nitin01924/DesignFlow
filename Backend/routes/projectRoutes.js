@@ -5,6 +5,7 @@ import {
   getProjectById,
   getProjects,
   renameProject,
+  saveProjectCanvas,
   uploadProjectImage,
 } from "../controllers/projectController.js";
 import { protect } from "../middleware/authMiddleware.js";
@@ -17,6 +18,7 @@ router.use(protect);
 
 router.route("/").get(getProjects).post(createProject);
 router.post("/:id/upload", receiveProjectImage, uploadProjectImage);
+router.put("/:id/canvas", saveProjectCanvas);
 router
   .route("/:id")
   .get(getProjectById)

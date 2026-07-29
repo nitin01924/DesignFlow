@@ -22,11 +22,20 @@ const fitImageToCanvas = (image, canvas) => {
   image.setCoords();
 };
 
-function CanvasArea({ canvasImage, projectTitle, onEditorStateChange }) {
+function CanvasArea({
+  canvasImage,
+  canvasData,
+  savedCanvasWidth,
+  savedCanvasHeight,
+  projectTitle,
+  onEditorStateChange,
+}) {
   const canvasElementRef = useRef(null);
   const canvasContainerRef = useRef(null);
   const fabricCanvasRef = useRef(null);
   const fabricImageRef = useRef(null);
+  const lastCanvasSizeRef = useRef(null);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [selection, setSelection] = useState({
     canvas: null,
     object: null,
@@ -55,6 +64,7 @@ function CanvasArea({ canvasImage, projectTitle, onEditorStateChange }) {
       selection: true,
     });
     fabricCanvasRef.current = fabricCanvas;
+    setIsHydrated(false);
     setSelection((current) => ({
       canvas: fabricCanvas,
       object: null,
@@ -101,16 +111,33 @@ function CanvasArea({ canvasImage, projectTitle, onEditorStateChange }) {
     const resizeCanvas = () => {
       const { width, height } =
         canvasContainerRef.current.getBoundingClientRect();
+      const nextWidth = Math.max(1, Math.round(width));
+      const nextHeight = Math.max(1, Math.round(height));
+      const previousSize = lastCanvasSizeRef.current;
 
       fabricCanvas.setDimensions({
-        width: Math.max(1, Math.round(width)),
-        height: Math.max(1, Math.round(height)),
+        width: nextWidth,
+        height: nextHeight,
       });
 
-      if (fabricImageRef.current) {
+      if (previousSize && fabricCanvas.getObjects().length) {
+        const scaleX = nextWidth / previousSize.width;
+        const scaleY = nextHeight / previousSize.height;
+
+        fabricCanvas.getObjects().forEach((object) => {
+          object.set({
+            left: (object.left || 0) * scaleX,
+            top: (object.top || 0) * scaleY,
+            scaleX: (object.scaleX || 1) * scaleX,
+            scaleY: (object.scaleY || 1) * scaleY,
+          });
+          object.setCoords();
+        });
+      } else if (fabricImageRef.current) {
         fitImageToCanvas(fabricImageRef.current, fabricCanvas);
       }
 
+      lastCanvasSizeRef.current = { width: nextWidth, height: nextHeight };
       fabricCanvas.requestRenderAll();
     };
 
@@ -128,6 +155,7 @@ function CanvasArea({ canvasImage, projectTitle, onEditorStateChange }) {
       fabricCanvas.off("object:rotating", syncSelection);
       fabricCanvas.off("object:modified", syncSelection);
       fabricImageRef.current = null;
+      lastCanvasSizeRef.current = null;
       fabricCanvasRef.current = null;
       void fabricCanvas.dispose();
     };
@@ -137,18 +165,72 @@ function CanvasArea({ canvasImage, projectTitle, onEditorStateChange }) {
     const fabricCanvas = fabricCanvasRef.current;
     if (!fabricCanvas) return;
 
+    let isCurrent = true;
+
+    const hydrateCanvas = async () => {
+      try {
+        if (canvasData) {
+          await fabricCanvas.loadFromJSON(canvasData);
+          if (!isCurrent) return;
+
+          const targetWidth = fabricCanvas.getWidth();
+          const targetHeight = fabricCanvas.getHeight();
+          const sourceWidth = Number(savedCanvasWidth) || targetWidth;
+          const sourceHeight = Number(savedCanvasHeight) || targetHeight;
+          const scaleX = targetWidth / sourceWidth;
+          const scaleY = targetHeight / sourceHeight;
+
+          fabricCanvas.getObjects().forEach((object) => {
+            object.set({
+              left: (object.left || 0) * scaleX,
+              top: (object.top || 0) * scaleY,
+              scaleX: (object.scaleX || 1) * scaleX,
+              scaleY: (object.scaleY || 1) * scaleY,
+            });
+            if (object.type === "image" && object.aspectRatioLocked !== false) {
+              object.setControlsVisibility({
+                mt: false,
+                mb: false,
+                ml: false,
+                mr: false,
+              });
+            }
+            object.setCoords();
+          });
+          fabricCanvas.requestRenderAll();
+        }
+      } catch (error) {
+        console.error("Unable to restore the saved Fabric canvas", error);
+      } finally {
+        if (isCurrent) setIsHydrated(true);
+      }
+    };
+
+    void hydrateCanvas();
+    return () => {
+      isCurrent = false;
+    };
+  }, [canvasData, savedCanvasHeight, savedCanvasWidth]);
+
+  useEffect(() => {
+    const fabricCanvas = fabricCanvasRef.current;
+    if (!fabricCanvas || !isHydrated) return;
+
     const abortController = new AbortController();
 
     const loadCanvasImage = async () => {
-      if (fabricImageRef.current) {
-        fabricCanvas.discardActiveObject();
-        fabricCanvas.remove(fabricImageRef.current);
-        fabricImageRef.current = null;
-        handleSelectionChange(null);
-      }
-
       if (!canvasImage) {
         fabricCanvas.requestRenderAll();
+        return;
+      }
+
+      // A previously uploaded image is already restored by loadFromJSON().
+      // Only add the asset when it is not part of the serialized document.
+      const existingImage = fabricCanvas
+        .getObjects()
+        .find((object) => object.type === "image" && object.getSrc?.() === canvasImage);
+      if (existingImage) {
+        fabricImageRef.current = existingImage;
         return;
       }
 
@@ -199,7 +281,7 @@ function CanvasArea({ canvasImage, projectTitle, onEditorStateChange }) {
     return () => {
       abortController.abort();
     };
-  }, [canvasImage, handleSelectionChange]);
+  }, [canvasImage, handleSelectionChange, isHydrated]);
 
   return (
     <div className="relative flex h-full min-h-0 min-w-0 flex-col">
@@ -230,7 +312,7 @@ function CanvasArea({ canvasImage, projectTitle, onEditorStateChange }) {
           aria-label={`${projectTitle} editable canvas`}
         />
 
-        {!canvasImage && (
+        {!canvasImage && !canvasData?.objects?.length && (
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center p-8">
             <div className="mb-4 grid size-12 place-items-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
               <svg

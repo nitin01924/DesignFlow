@@ -7,6 +7,7 @@ import EditorNavbar from "../components/editor/EditorNavbar";
 import EditorSidebar from "../components/editor/EditorSidebar";
 import PropertiesPanel from "../components/editor/PropertiesPanel";
 import MobileEditorHeader from "../components/editor/mobile/MobileEditorHeader";
+import { useProjectSave } from "../hooks/useProjectSave";
 
 function ProjectWorkspace({ user }) {
   // useParams reads dynamic values from the route, so /project/:id gives us this project's id.
@@ -38,6 +39,29 @@ function ProjectWorkspace({ user }) {
       revision: current.revision + 1,
     }));
   }, []);
+
+  const handleSavedProject = useCallback((updatedProject) => {
+    setProject((current) => ({
+      ...updatedProject,
+      // Keep the live Fabric instance as the source of truth during this
+      // session; swapping the payload reference would re-hydrate the editor.
+      canvasData: current?.canvasData,
+      canvasWidth: current?.canvasWidth,
+      canvasHeight: current?.canvasHeight,
+    }));
+  }, []);
+
+  const { save, saveStatus } = useProjectSave({
+    projectId: id,
+    canvas: editorState.canvas,
+    onSaved: handleSavedProject,
+  });
+
+  const handleSave = useCallback(() => {
+    void save().catch((err) => {
+      toast.error(err.message || "Unable to save project");
+    });
+  }, [save]);
 
   useEffect(() => {
     // useEffect runs after the component mounts; fetching here keeps rendering separate from backend side effects.
@@ -79,7 +103,12 @@ function ProjectWorkspace({ user }) {
 
       // The workspace owns project state because the sidebar changes it and the
       // canvas and properties panel both consume the updated project data.
-      setProject(updatedProject);
+      setProject((current) => ({
+        ...updatedProject,
+        canvasData: current?.canvasData,
+        canvasWidth: current?.canvasWidth,
+        canvasHeight: current?.canvasHeight,
+      }));
       toast.success("Image uploaded");
     } catch (err) {
       toast.error(err.message || "Unable to upload image");
@@ -107,11 +136,18 @@ function ProjectWorkspace({ user }) {
           // Each editor region owns one concern, making it reusable and allowing future editing features to evolve independently.
           <div className="flex h-full w-full flex-col bg-white dark:bg-slate-950 md:min-h-[calc(100vh-73px)]">
             {/* Props keep data ownership in this page while presenting the same project consistently across editor regions. */}
-            <EditorNavbar user={user} projectTitle={project.title} />
+            <EditorNavbar
+              user={user}
+              projectTitle={project.title}
+              onSave={handleSave}
+              saveStatus={saveStatus}
+            />
             <MobileEditorHeader
               projectTitle={project.title}
               onUpload={handleImageUpload}
               isUploading={isUploading}
+              onSave={handleSave}
+              saveStatus={saveStatus}
             />
 
             {/* This composition leaves clear extension points for future canvas state, tools, and element properties. */}
@@ -123,6 +159,9 @@ function ProjectWorkspace({ user }) {
               {/* The workspace provides project data; CanvasArea owns all Fabric state and interactions. */}
               <CanvasArea
                 canvasImage={project.canvasImage}
+                canvasData={project.canvasData}
+                savedCanvasWidth={project.canvasWidth}
+                savedCanvasHeight={project.canvasHeight}
                 projectTitle={project.title}
                 onEditorStateChange={handleEditorStateChange}
               />

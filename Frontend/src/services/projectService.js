@@ -45,3 +45,16 @@ export const uploadProjectImage = async (projectId, image) => {
 
   return result.project;
 };
+
+export const saveProjectCanvas = async (projectId, canvasData, dimensions) => {
+  const result = await apiRequest(`/api/projects/${projectId}/canvas`, {
+    method: "PUT",
+    body: JSON.stringify({
+      canvasData,
+      canvasWidth: dimensions.width,
+      canvasHeight: dimensions.height,
+    }),
+  });
+
+  return result.project;
+};

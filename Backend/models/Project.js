@@ -22,6 +22,18 @@ const projectSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    canvasData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    canvasWidth: {
+      type: Number,
+      min: 1,
+    },
+    canvasHeight: {
+      type: Number,
+      min: 1,
+    },
   },
   {
     timestamps: true,

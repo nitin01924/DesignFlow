@@ -10,7 +10,9 @@ dotenv.config();
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+// Fabric documents can contain rich object metadata; keep a bounded but practical
+// request limit while images themselves continue to be stored by URL.
+app.use(express.json({ limit: "5mb" }));
 
 const port = 3000;
 
