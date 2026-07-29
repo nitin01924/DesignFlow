@@ -8,6 +8,7 @@ import EditorSidebar from "../components/editor/EditorSidebar";
 import PropertiesPanel from "../components/editor/PropertiesPanel";
 import MobileEditorHeader from "../components/editor/mobile/MobileEditorHeader";
 import { useProjectSave } from "../hooks/useProjectSave";
+import { addTextToCanvas } from "../components/editor/text/textPresets";
 
 function ProjectWorkspace({ user }) {
   // useParams reads dynamic values from the route, so /project/:id gives us this project's id.
@@ -62,6 +63,14 @@ function ProjectWorkspace({ user }) {
       toast.error(err.message || "Unable to save project");
     });
   }, [save]);
+
+  const handleAddText = useCallback((presetId) => {
+    const text = addTextToCanvas(editorState.canvas, presetId);
+    if (text) handleEditorStateChange({
+      canvas: editorState.canvas,
+      selectedObject: text,
+    });
+  }, [editorState.canvas, handleEditorStateChange]);
 
   useEffect(() => {
     // useEffect runs after the component mounts; fetching here keeps rendering separate from backend side effects.
@@ -148,6 +157,7 @@ function ProjectWorkspace({ user }) {
               isUploading={isUploading}
               onSave={handleSave}
               saveStatus={saveStatus}
+              onAddText={handleAddText}
             />
 
             {/* This composition leaves clear extension points for future canvas state, tools, and element properties. */}
@@ -155,6 +165,7 @@ function ProjectWorkspace({ user }) {
               <EditorSidebar
                 onUpload={handleImageUpload}
                 isUploading={isUploading}
+                onAddText={handleAddText}
               />
               {/* The workspace provides project data; CanvasArea owns all Fabric state and interactions. */}
               <CanvasArea

@@ -50,7 +50,7 @@ function MobileObjectToolbar({ canvas, selectedObject, onSelectionChange }) {
     return (
       <div className="pointer-events-none absolute inset-x-3 top-3 z-20 flex justify-center md:hidden">
         <p className="rounded-full bg-slate-950/75 px-4 py-2 text-xs font-medium text-white shadow-lg backdrop-blur">
-          Tap the image to start editing
+          Tap an object to start editing
         </p>
       </div>
     );
@@ -66,7 +66,7 @@ function MobileObjectToolbar({ canvas, selectedObject, onSelectionChange }) {
     <div
       className="absolute inset-x-3 top-3 z-20 flex justify-center md:hidden"
       role="toolbar"
-      aria-label="Selected image actions"
+      aria-label="Selected object actions"
     >
       <div className="flex items-center gap-1 rounded-2xl bg-white/95 p-1.5 shadow-xl ring-1 ring-slate-900/10 backdrop-blur dark:bg-slate-900/95 dark:ring-white/10">
         {actions.map((action) => (

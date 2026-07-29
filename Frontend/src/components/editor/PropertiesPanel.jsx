@@ -1,13 +1,20 @@
 import { useState } from "react";
 import ImagePropertiesPanel from "./properties/ImagePropertiesPanel";
 import MobileImagePropertiesPanel from "./properties/MobileImagePropertiesPanel";
+import TextPropertiesPanel from "./properties/TextPropertiesPanel";
 
 const propertyPanelByType = {
   image: ImagePropertiesPanel,
+  "i-text": TextPropertiesPanel,
+  text: TextPropertiesPanel,
+  textbox: TextPropertiesPanel,
 };
 
 const mobilePropertyPanelByType = {
   image: MobileImagePropertiesPanel,
+  "i-text": TextPropertiesPanel,
+  text: TextPropertiesPanel,
+  textbox: TextPropertiesPanel,
 };
 
 function formatDate(date) {
@@ -59,6 +66,12 @@ function PropertiesPanel({ project, editorState, onObjectChange }) {
   const MobileSelectedObjectPanel = selectedObject
     ? mobilePropertyPanelByType[selectedObject.type]
     : null;
+  const selectedObjectLabel =
+    selectedObject?.type === "i-text" ||
+    selectedObject?.type === "text" ||
+    selectedObject?.type === "textbox"
+      ? "Text properties"
+      : "Image properties";
 
   return (
     <>
@@ -115,7 +128,7 @@ function PropertiesPanel({ project, editorState, onObjectChange }) {
             <span className="flex min-w-0 items-center gap-3">
               <span className="h-1 w-10 shrink-0 rounded-full bg-slate-300 dark:bg-slate-600" />
               <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                Image properties
+                {selectedObjectLabel}
               </span>
             </span>
             <span className="flex shrink-0 items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400">

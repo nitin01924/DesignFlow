@@ -107,6 +107,7 @@ function CanvasArea({
     fabricCanvas.on("object:scaling", syncScaling);
     fabricCanvas.on("object:rotating", syncSelection);
     fabricCanvas.on("object:modified", syncSelection);
+    fabricCanvas.on("text:changed", syncSelection);
 
     const resizeCanvas = () => {
       const { width, height } =
@@ -154,6 +155,7 @@ function CanvasArea({
       fabricCanvas.off("object:scaling", syncScaling);
       fabricCanvas.off("object:rotating", syncSelection);
       fabricCanvas.off("object:modified", syncSelection);
+      fabricCanvas.off("text:changed", syncSelection);
       fabricImageRef.current = null;
       lastCanvasSizeRef.current = null;
       fabricCanvasRef.current = null;
