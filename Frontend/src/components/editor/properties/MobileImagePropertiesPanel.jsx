@@ -6,7 +6,7 @@ function MobileImagePropertiesPanel({ canvas, object, onObjectChange }) {
     onObjectChange(object);
   };
 
-  const isAspectRatioLocked = object.aspectRatioLocked !== false;
+  const isAspectRatioLocked = Boolean(object.aspectRatioLocked);
 
   const toggleAspectRatio = (event) => {
     const locked = event.target.checked;
@@ -22,6 +22,7 @@ function MobileImagePropertiesPanel({ canvas, object, onObjectChange }) {
       ml: !locked,
       mr: !locked,
     });
+    canvas.set({ uniformScaling: locked });
     object.setCoords();
     canvas.requestRenderAll();
     onObjectChange(object);

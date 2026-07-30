@@ -76,9 +76,11 @@ function CanvasArea({
     });
 
     const syncSelection = (event) => {
-      handleSelectionChange(
-        event?.target || fabricCanvas.getActiveObject() || null,
+      const object = event?.target || fabricCanvas.getActiveObject() || null;
+      fabricCanvas.uniformScaling = !(
+        object?.type === "image" && !object.aspectRatioLocked
       );
+      handleSelectionChange(object);
     };
 
     const syncScaling = (event) => {
@@ -189,12 +191,13 @@ function CanvasArea({
               scaleX: (object.scaleX || 1) * scaleX,
               scaleY: (object.scaleY || 1) * scaleY,
             });
-            if (object.type === "image" && object.aspectRatioLocked !== false) {
+            if (object.type === "image") {
+              const locked = Boolean(object.aspectRatioLocked);
               object.setControlsVisibility({
-                mt: false,
-                mb: false,
-                ml: false,
-                mr: false,
+                mt: !locked,
+                mb: !locked,
+                ml: !locked,
+                mr: !locked,
               });
             }
             object.setCoords();
@@ -250,7 +253,7 @@ function CanvasArea({
             lockRotation: false,
             lockScalingX: false,
             lockScalingY: false,
-            aspectRatioLocked: true,
+            aspectRatioLocked: false,
             touchCornerSize: 36,
           },
         );
@@ -258,15 +261,11 @@ function CanvasArea({
         if (abortController.signal.aborted) return;
 
         fitImageToCanvas(image, fabricCanvas);
-        image.set({
-          lockedAspectRatio:
-            image.getScaledWidth() / Math.max(1, image.getScaledHeight()),
-        });
         image.setControlsVisibility({
-          mt: false,
-          mb: false,
-          ml: false,
-          mr: false,
+          mt: true,
+          mb: true,
+          ml: true,
+          mr: true,
         });
         fabricCanvas.add(image);
         fabricImageRef.current = image;

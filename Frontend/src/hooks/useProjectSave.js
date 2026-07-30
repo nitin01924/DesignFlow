@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { FabricObject } from "fabric";
 import { saveProjectCanvas } from "../services/projectService";
 
 // Fabric only serializes registered properties. These are used by DesignFlow
@@ -11,6 +12,13 @@ const SERIALIZED_OBJECT_PROPERTIES = [
   "lockedAspectRatio",
 ];
 
+FabricObject.customProperties = Array.from(
+  new Set([
+    ...(FabricObject.customProperties || []),
+    ...SERIALIZED_OBJECT_PROPERTIES,
+  ]),
+);
+
 export function useProjectSave({ projectId, canvas, onSaved }) {
   const [saveStatus, setSaveStatus] = useState("saved");
   const saveInProgressRef = useRef(false);
@@ -22,7 +30,7 @@ export function useProjectSave({ projectId, canvas, onSaved }) {
     setSaveStatus("saving");
 
     try {
-      const canvasData = canvas.toJSON(SERIALIZED_OBJECT_PROPERTIES);
+      const canvasData = canvas.toJSON();
       const updatedProject = await saveProjectCanvas(projectId, canvasData, {
         width: canvas.getWidth(),
         height: canvas.getHeight(),

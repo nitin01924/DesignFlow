@@ -4,31 +4,8 @@
    an explicit class so the user's saved toggle controls every descendant. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Mobile-only entrance motion for the contextual properties sheet. */
-@media (max-width: 767px) {
-  @keyframes mobile-properties-enter {
-    from {
-      transform: translateY(100%);
-    }
-
-    to {
-      transform: translateY(0);
-    }
-  }
-
-  .mobile-properties-sheet {
-    animation: mobile-properties-enter 240ms ease-out;
-  }
-
-  .editor-layout:has(.mobile-properties-sheet[data-expanded="true"])
-    .mobile-canvas-workspace {
-    padding-bottom: 36dvh;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .mobile-properties-sheet {
-    animation: none;
-    transition: none;
+    transition-duration: 0ms;
   }
 }

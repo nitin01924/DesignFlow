@@ -11,7 +11,7 @@ const actions = [
         lockedAspectRatio: object.lockedAspectRatio,
       });
       if (object.type === "image") {
-        const locked = object.aspectRatioLocked !== false;
+        const locked = Boolean(object.aspectRatioLocked);
         clone.setControlsVisibility({
           mt: !locked,
           mb: !locked,

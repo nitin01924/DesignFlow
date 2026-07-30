@@ -36,7 +36,7 @@ function NumberField({ label, value, onChange, min, max, step = 1, suffix }) {
 function ImagePropertiesPanel({ canvas, object, onObjectChange }) {
   const scaledWidth = object.getScaledWidth();
   const scaledHeight = object.getScaledHeight();
-  const isAspectRatioLocked = object.aspectRatioLocked !== false;
+  const isAspectRatioLocked = Boolean(object.aspectRatioLocked);
 
   const commit = (properties) => {
     object.set(properties);
@@ -94,6 +94,7 @@ function ImagePropertiesPanel({ canvas, object, onObjectChange }) {
       ml: !locked,
       mr: !locked,
     });
+    canvas.set({ uniformScaling: locked });
     object.setCoords();
     canvas.requestRenderAll();
     onObjectChange(object);
