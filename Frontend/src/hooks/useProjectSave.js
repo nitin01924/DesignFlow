@@ -10,6 +10,10 @@ const SERIALIZED_OBJECT_PROPERTIES = [
   "metadata",
   "aspectRatioLocked",
   "lockedAspectRatio",
+  "cropWidth",
+  "cropHeight",
+  "originalWidth",
+  "originalHeight",
 ];
 
 FabricObject.customProperties = Array.from(
@@ -19,12 +23,12 @@ FabricObject.customProperties = Array.from(
   ]),
 );
 
-export function useProjectSave({ projectId, canvas, onSaved }) {
+export function useProjectSave({ projectId, canvas, onSaved, disabled = false }) {
   const [saveStatus, setSaveStatus] = useState("saved");
   const saveInProgressRef = useRef(false);
 
   const save = useCallback(async () => {
-    if (!canvas || saveInProgressRef.current) return;
+    if (!canvas || disabled || saveInProgressRef.current) return;
 
     saveInProgressRef.current = true;
     setSaveStatus("saving");
@@ -43,7 +47,7 @@ export function useProjectSave({ projectId, canvas, onSaved }) {
     } finally {
       saveInProgressRef.current = false;
     }
-  }, [canvas, onSaved, projectId]);
+  }, [canvas, disabled, onSaved, projectId]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {

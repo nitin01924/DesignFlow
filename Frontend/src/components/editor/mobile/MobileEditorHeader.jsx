@@ -11,6 +11,7 @@ function MobileEditorHeader({
   onAddText,
   onExport,
   isExporting,
+  isEditingDisabled,
 }) {
   const fileInputRef = useRef(null);
   const [showTextTools, setShowTextTools] = useState(false);
@@ -48,6 +49,7 @@ function MobileEditorHeader({
         <button
           type="button"
           onClick={() => setShowTextTools((visible) => !visible)}
+          disabled={isEditingDisabled}
           className={`grid size-10 place-items-center rounded-full text-lg font-semibold ${
             showTextTools
               ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
@@ -61,7 +63,7 @@ function MobileEditorHeader({
         <button
           type="button"
           onClick={onExport}
-          disabled={isExporting}
+          disabled={isExporting || isEditingDisabled}
           className="grid size-10 place-items-center rounded-full text-blue-600 active:bg-blue-50 disabled:opacity-60 dark:text-blue-400 dark:active:bg-blue-950/60"
           aria-label={isExporting ? "Exporting design" : "Export design"}
           title="Export design"
@@ -77,7 +79,7 @@ function MobileEditorHeader({
         <button
           type="button"
           onClick={onSave}
-          disabled={saveStatus === "saving"}
+          disabled={saveStatus === "saving" || isEditingDisabled}
           className="rounded-lg px-2 py-2 text-xs font-semibold text-blue-600 disabled:opacity-60 dark:text-blue-400"
           aria-label="Save project"
         >
@@ -86,7 +88,7 @@ function MobileEditorHeader({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
+          disabled={isUploading || isEditingDisabled}
           className="grid size-11 place-items-center rounded-full bg-blue-600 text-white active:bg-blue-700 disabled:opacity-50"
           aria-label={isUploading ? "Uploading image" : "Add image"}
         >

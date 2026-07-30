@@ -22,6 +22,7 @@ function ProjectWorkspace({ user }) {
   const [error, setError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isCropping, setIsCropping] = useState(false);
   const [editorState, setEditorState] = useState({
     canvas: null,
     selectedObject: null,
@@ -59,6 +60,7 @@ function ProjectWorkspace({ user }) {
     projectId: id,
     canvas: editorState.canvas,
     onSaved: handleSavedProject,
+    disabled: isCropping,
   });
   const { exportCanvas, isExporting } = useCanvasExport(editorState.canvas);
 
@@ -167,6 +169,7 @@ function ProjectWorkspace({ user }) {
               saveStatus={saveStatus}
               onExport={() => setIsExportDialogOpen(true)}
               isExporting={isExporting}
+              isEditingDisabled={isCropping}
             />
             <MobileEditorHeader
               projectTitle={project.title}
@@ -177,6 +180,7 @@ function ProjectWorkspace({ user }) {
               onAddText={handleAddText}
               onExport={() => setIsExportDialogOpen(true)}
               isExporting={isExporting}
+              isEditingDisabled={isCropping}
             />
 
             {/* This composition leaves clear extension points for future canvas state, tools, and element properties. */}
@@ -185,6 +189,7 @@ function ProjectWorkspace({ user }) {
                 onUpload={handleImageUpload}
                 isUploading={isUploading}
                 onAddText={handleAddText}
+                disabled={isCropping}
               />
               {/* The workspace provides project data; CanvasArea owns all Fabric state and interactions. */}
               <CanvasArea
@@ -194,11 +199,13 @@ function ProjectWorkspace({ user }) {
                 savedCanvasHeight={project.canvasHeight}
                 projectTitle={project.title}
                 onEditorStateChange={handleEditorStateChange}
+                onCropModeChange={setIsCropping}
               />
               <PropertiesPanel
                 project={project}
                 editorState={editorState}
                 onObjectChange={handleObjectChange}
+                isEditingDisabled={isCropping}
               />
             </div>
           </div>

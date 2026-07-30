@@ -7,6 +7,7 @@ const iconPaths = {
   rotateRight: "M17 7h4V3m-.5 4.5A8 8 0 1 0 20 17",
   lock: "M7 10V7a5 5 0 0 1 10 0v3M5 10h14v10H5zM12 14v2",
   unlock: "M8 10V7a4 4 0 0 1 7.5-2M5 10h14v10H5zM12 14v2",
+  crop: "M7 3v14a4 4 0 0 0 4 4h10M3 7h14a4 4 0 0 1 4 4v10",
 };
 
 function ToolbarButton({ action, onClick }) {
@@ -39,7 +40,7 @@ function ToolbarButton({ action, onClick }) {
   );
 }
 
-function EditorToolbar({ canvas, selectedObject, onSelectionChange }) {
+function EditorToolbar({ canvas, selectedObject, onSelectionChange, onCrop }) {
   const hasSelection = Boolean(canvas && selectedObject);
   const isMovementLocked = Boolean(
     selectedObject?.lockMovementX && selectedObject?.lockMovementY,
@@ -98,12 +99,14 @@ function EditorToolbar({ canvas, selectedObject, onSelectionChange }) {
 
   // New commands can be appended here without changing the toolbar markup.
   const actions = [
-    { label: "Delete selected object", shortLabel: "Delete", icon: "delete", run: deleteSelection },
+    ...(selectedObject?.type === "image"
+      ? [{ label: "Crop image", shortLabel: "Crop", icon: "crop", run: () => onCrop?.(selectedObject) }]
+      : []),
     { label: "Duplicate selected object", shortLabel: "Duplicate", icon: "duplicate", run: duplicateSelection },
-    { label: "Bring forward", icon: "forward", run: () => { canvas.bringObjectForward(selectedObject); finishAction(); } },
-    { label: "Send backward", icon: "backward", run: () => { canvas.sendObjectBackwards(selectedObject); finishAction(); } },
     { label: "Rotate left 90 degrees", shortLabel: "Rotate left", icon: "rotateLeft", run: () => rotate(-90) },
     { label: "Rotate right 90 degrees", shortLabel: "Rotate right", icon: "rotateRight", run: () => rotate(90) },
+    { label: "Bring forward", icon: "forward", run: () => { canvas.bringObjectForward(selectedObject); finishAction(); } },
+    { label: "Send backward", icon: "backward", run: () => { canvas.sendObjectBackwards(selectedObject); finishAction(); } },
     {
       label: isMovementLocked ? "Unlock object movement" : "Lock object movement",
       shortLabel: isMovementLocked ? "Unlock" : "Lock",
@@ -111,6 +114,7 @@ function EditorToolbar({ canvas, selectedObject, onSelectionChange }) {
       pressed: isMovementLocked,
       run: toggleMovementLock,
     },
+    { label: "Delete selected object", shortLabel: "Delete", icon: "delete", run: deleteSelection },
   ];
 
   return (

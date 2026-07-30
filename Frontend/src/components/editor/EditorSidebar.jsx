@@ -18,7 +18,7 @@ const tools = [
   },
 ];
 
-function EditorSidebar({ onUpload, isUploading, onAddText }) {
+function EditorSidebar({ onUpload, isUploading, onAddText, disabled = false }) {
   const fileInputRef = useRef(null);
   const [activeTool, setActiveTool] = useState(null);
 
@@ -59,7 +59,7 @@ function EditorSidebar({ onUpload, isUploading, onAddText }) {
             key={tool.label}
             type="button"
             onClick={() => handleToolClick(tool)}
-            disabled={tool.label === "Upload" && isUploading}
+            disabled={disabled || (tool.label === "Upload" && isUploading)}
             title={
               tool.label === "Upload"
                 ? "Upload an image"
@@ -68,7 +68,7 @@ function EditorSidebar({ onUpload, isUploading, onAddText }) {
                   : `${tool.label} tools coming soon`
             }
             aria-pressed={tool.label === "Text" ? activeTool === "Text" : undefined}
-            className={`group flex min-w-18 flex-col items-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium transition hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:hover:bg-blue-950/60 dark:hover:text-blue-300 md:min-w-0 ${
+            className={`group flex min-w-18 flex-col items-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium transition hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-blue-950/60 dark:hover:text-blue-300 md:min-w-0 ${
               activeTool === tool.label
                 ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
                 : "text-slate-500 dark:text-slate-400"

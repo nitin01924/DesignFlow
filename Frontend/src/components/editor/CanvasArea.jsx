@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Canvas, FabricImage } from "fabric";
 import EditorToolbar from "./EditorToolbar";
 import MobileObjectToolbar from "./mobile/MobileObjectToolbar";
+import CropActionBar from "./crop/CropActionBar";
+import { useImageCrop } from "./crop/useImageCrop";
 
 const fitImageToCanvas = (image, canvas) => {
   const imageWidth = image.width || 1;
@@ -29,6 +31,7 @@ function CanvasArea({
   savedCanvasHeight,
   projectTitle,
   onEditorStateChange,
+  onCropModeChange,
 }) {
   const canvasElementRef = useRef(null);
   const canvasContainerRef = useRef(null);
@@ -54,6 +57,12 @@ function CanvasArea({
     });
   }, [onEditorStateChange]);
 
+  const crop = useImageCrop({
+    canvas: selection.canvas,
+    onSelectionChange: handleSelectionChange,
+    onModeChange: onCropModeChange,
+  });
+
   useEffect(() => {
     if (!canvasElementRef.current || !canvasContainerRef.current) return;
 
@@ -76,11 +85,24 @@ function CanvasArea({
     });
 
     const syncSelection = (event) => {
-      const object = event?.target || fabricCanvas.getActiveObject() || null;
-      fabricCanvas.uniformScaling = !(
-        object?.type === "image" && !object.aspectRatioLocked
-      );
-      handleSelectionChange(object);
+      const interactionObject =
+        event?.target || fabricCanvas.getActiveObject() || null;
+      const cropTarget = fabricCanvas
+        .getObjects()
+        .find((object) => object.cropModeActive);
+      const selectedObject = interactionObject?.cropHelperType
+        ? cropTarget
+        : interactionObject || cropTarget || null;
+
+      fabricCanvas.uniformScaling =
+        interactionObject?.cropHelperType === "frame"
+          ? false
+          : !(
+              interactionObject?.type === "image" &&
+              !interactionObject.aspectRatioLocked &&
+              !interactionObject.cropModeActive
+            );
+      handleSelectionChange(selectedObject);
     };
 
     const syncScaling = (event) => {
@@ -286,18 +308,29 @@ function CanvasArea({
 
   return (
     <div className="relative flex h-full min-h-0 min-w-0 flex-col">
-      <div className="hidden md:block">
-        <EditorToolbar
-          canvas={selection.canvas}
-          selectedObject={selection.object}
-          onSelectionChange={handleSelectionChange}
+      {crop.isCropping ? (
+        <CropActionBar
+          onCancel={crop.cancelCrop}
+          onApply={crop.applyCrop}
         />
-      </div>
-      <MobileObjectToolbar
-        canvas={selection.canvas}
-        selectedObject={selection.object}
-        onSelectionChange={handleSelectionChange}
-      />
+      ) : (
+        <>
+          <div className="hidden md:block">
+            <EditorToolbar
+              canvas={selection.canvas}
+              selectedObject={selection.object}
+              onSelectionChange={handleSelectionChange}
+              onCrop={crop.startCrop}
+            />
+          </div>
+          <MobileObjectToolbar
+            canvas={selection.canvas}
+            selectedObject={selection.object}
+            onSelectionChange={handleSelectionChange}
+            onCrop={crop.startCrop}
+          />
+        </>
+      )}
       <section
         className="mobile-canvas-workspace flex min-h-0 min-w-0 flex-1 touch-none items-center justify-center overflow-hidden bg-slate-100 p-3 transition-[padding,background-color] duration-300 dark:bg-slate-900 md:min-h-96 md:overflow-auto md:p-10"
         aria-label="Design canvas workspace"

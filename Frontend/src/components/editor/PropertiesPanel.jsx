@@ -57,7 +57,12 @@ function ObjectProperties({
   );
 }
 
-function PropertiesPanel({ project, editorState, onObjectChange }) {
+function PropertiesPanel({
+  project,
+  editorState,
+  onObjectChange,
+  isEditingDisabled = false,
+}) {
   const bottomSheet = useBottomSheet("half");
   const selectedObject = editorState?.selectedObject;
   const SelectedObjectPanel = selectedObject
@@ -72,6 +77,15 @@ function PropertiesPanel({ project, editorState, onObjectChange }) {
     selectedObject?.type === "textbox"
       ? "Text properties"
       : "Image properties";
+
+  if (isEditingDisabled) {
+    return (
+      <aside
+        className="hidden border-l border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 md:block"
+        aria-label="Properties unavailable while cropping"
+      />
+    );
+  }
 
   return (
     <>
