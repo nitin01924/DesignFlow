@@ -89,15 +89,13 @@ function App() {
 
   return (
     <div className={darkMode ? "dark min-h-screen bg-slate-950" : "min-h-screen"}>
-      {token && (
-        <div className={isProjectWorkspace ? "hidden md:block" : ""}>
-          <Navbar
-            user={user}
-            darkMode={darkMode}
-            setDarkMode={setDarkMode}
-            onLogout={handleLogout}
-          />
-        </div>
+      {token && !isProjectWorkspace && (
+        <Navbar
+          user={user}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          onLogout={handleLogout}
+        />
       )}
 
       <Routes>

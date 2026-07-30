@@ -14,7 +14,6 @@ function MobileEditorHeader({
 }) {
   const fileInputRef = useRef(null);
   const [showTextTools, setShowTextTools] = useState(false);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   const handleFileChange = (event) => {
     const [file] = event.target.files;
@@ -59,43 +58,22 @@ function MobileEditorHeader({
         >
           T
         </button>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowMoreMenu((visible) => !visible)}
-            className="grid size-10 place-items-center rounded-full text-slate-600 active:bg-slate-100 dark:text-slate-300 dark:active:bg-slate-800"
-            aria-label="More editor actions"
-            aria-expanded={showMoreMenu}
-          >
-            <svg viewBox="0 0 24 24" className="size-5" fill="currentColor" aria-hidden="true">
-              <circle cx="5" cy="12" r="1.7" />
-              <circle cx="12" cy="12" r="1.7" />
-              <circle cx="19" cy="12" r="1.7" />
+        <button
+          type="button"
+          onClick={onExport}
+          disabled={isExporting}
+          className="grid size-10 place-items-center rounded-full text-blue-600 active:bg-blue-50 disabled:opacity-60 dark:text-blue-400 dark:active:bg-blue-950/60"
+          aria-label={isExporting ? "Exporting design" : "Export design"}
+          title="Export design"
+        >
+          {isExporting ? (
+            <span className="size-5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600 dark:border-blue-900 dark:border-t-blue-400" />
+          ) : (
+            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+              <path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </button>
-          {showMoreMenu && (
-            <div className="absolute right-0 top-[calc(100%+0.5rem)] w-48 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowMoreMenu(false);
-                  onExport();
-                }}
-                disabled={isExporting}
-                className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-slate-700 active:bg-slate-100 disabled:opacity-60 dark:text-slate-200 dark:active:bg-slate-800"
-              >
-                {isExporting ? (
-                  <span className="size-5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
-                ) : (
-                  <svg viewBox="0 0 24 24" className="size-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-                {isExporting ? "Exporting..." : "Export design"}
-              </button>
-            </div>
           )}
-        </div>
+        </button>
         <button
           type="button"
           onClick={onSave}
