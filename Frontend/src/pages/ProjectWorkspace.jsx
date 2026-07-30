@@ -9,6 +9,8 @@ import PropertiesPanel from "../components/editor/PropertiesPanel";
 import MobileEditorHeader from "../components/editor/mobile/MobileEditorHeader";
 import { useProjectSave } from "../hooks/useProjectSave";
 import { addTextToCanvas } from "../components/editor/text/textPresets";
+import ExportDialog from "../components/editor/export/ExportDialog";
+import { useCanvasExport } from "../hooks/useCanvasExport";
 
 function ProjectWorkspace({ user }) {
   // useParams reads dynamic values from the route, so /project/:id gives us this project's id.
@@ -19,6 +21,7 @@ function ProjectWorkspace({ user }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [editorState, setEditorState] = useState({
     canvas: null,
     selectedObject: null,
@@ -57,6 +60,7 @@ function ProjectWorkspace({ user }) {
     canvas: editorState.canvas,
     onSaved: handleSavedProject,
   });
+  const { exportCanvas, isExporting } = useCanvasExport(editorState.canvas);
 
   const handleSave = useCallback(() => {
     void save().catch((err) => {
@@ -71,6 +75,17 @@ function ProjectWorkspace({ user }) {
       selectedObject: text,
     });
   }, [editorState.canvas, handleEditorStateChange]);
+
+  const handleExport = useCallback(async (options) => {
+    try {
+      const fileName = await exportCanvas(options);
+      if (!fileName) return;
+      setIsExportDialogOpen(false);
+      toast.success(`${fileName} exported successfully`);
+    } catch (err) {
+      toast.error(err.message || "Unable to export this design");
+    }
+  }, [exportCanvas]);
 
   useEffect(() => {
     // useEffect runs after the component mounts; fetching here keeps rendering separate from backend side effects.
@@ -150,6 +165,8 @@ function ProjectWorkspace({ user }) {
               projectTitle={project.title}
               onSave={handleSave}
               saveStatus={saveStatus}
+              onExport={() => setIsExportDialogOpen(true)}
+              isExporting={isExporting}
             />
             <MobileEditorHeader
               projectTitle={project.title}
@@ -158,6 +175,8 @@ function ProjectWorkspace({ user }) {
               onSave={handleSave}
               saveStatus={saveStatus}
               onAddText={handleAddText}
+              onExport={() => setIsExportDialogOpen(true)}
+              isExporting={isExporting}
             />
 
             {/* This composition leaves clear extension points for future canvas state, tools, and element properties. */}
@@ -185,6 +204,14 @@ function ProjectWorkspace({ user }) {
           </div>
         )}
       </div>
+      {isExportDialogOpen && project && (
+        <ExportDialog
+          projectTitle={project.title}
+          isExporting={isExporting}
+          onCancel={() => setIsExportDialogOpen(false)}
+          onExport={handleExport}
+        />
+      )}
     </main>
   );
 }

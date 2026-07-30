@@ -6,7 +6,14 @@ const statusLabels = {
   failed: "Failed",
 };
 
-function EditorNavbar({ user, projectTitle, onSave, saveStatus }) {
+function EditorNavbar({
+  user,
+  projectTitle,
+  onSave,
+  saveStatus,
+  onExport,
+  isExporting,
+}) {
   const userName = user?.name?.trim() || "User";
   const userInitial = userName.charAt(0).toUpperCase();
 
@@ -67,11 +74,12 @@ function EditorNavbar({ user, projectTitle, onSave, saveStatus }) {
         </button>
         <button
           type="button"
-          disabled
-          title="Exporting will be available in a future update"
-          className="hidden cursor-not-allowed rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white opacity-45 sm:block"
+          onClick={onExport}
+          disabled={isExporting}
+          className="hidden min-w-24 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-65 sm:flex"
         >
-          Export
+          {isExporting && <span className="size-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />}
+          {isExporting ? "Exporting..." : "Export"}
         </button>
         <div
           className="grid size-9 place-items-center rounded-full bg-slate-900 text-xs font-bold text-white dark:bg-blue-600"
