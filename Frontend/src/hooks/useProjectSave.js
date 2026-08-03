@@ -1,27 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FabricObject } from "fabric";
 import { saveProjectCanvas } from "../services/projectService";
-
-// Fabric only serializes registered properties. These are used by DesignFlow
-// today, while metadata/id/name keep the format extensible for layers and plugins.
-const SERIALIZED_OBJECT_PROPERTIES = [
-  "id",
-  "name",
-  "metadata",
-  "aspectRatioLocked",
-  "lockedAspectRatio",
-  "cropWidth",
-  "cropHeight",
-  "originalWidth",
-  "originalHeight",
-];
-
-FabricObject.customProperties = Array.from(
-  new Set([
-    ...(FabricObject.customProperties || []),
-    ...SERIALIZED_OBJECT_PROPERTIES,
-  ]),
-);
+import { serializeCanvas } from "../components/editor/history/canvasSerialization.js";
 
 export function useProjectSave({ projectId, canvas, onSaved, disabled = false }) {
   const [saveStatus, setSaveStatus] = useState("saved");
@@ -34,7 +13,7 @@ export function useProjectSave({ projectId, canvas, onSaved, disabled = false })
     setSaveStatus("saving");
 
     try {
-      const canvasData = canvas.toJSON();
+      const canvasData = serializeCanvas(canvas);
       const updatedProject = await saveProjectCanvas(projectId, canvasData, {
         width: canvas.getWidth(),
         height: canvas.getHeight(),

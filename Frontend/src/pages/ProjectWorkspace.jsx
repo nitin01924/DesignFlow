@@ -11,6 +11,7 @@ import { useProjectSave } from "../hooks/useProjectSave";
 import { addTextToCanvas } from "../components/editor/text/textPresets";
 import ExportDialog from "../components/editor/export/ExportDialog";
 import { useCanvasExport } from "../hooks/useCanvasExport";
+import { useCanvasHistory } from "../components/editor/history/useCanvasHistory";
 
 function ProjectWorkspace({ user }) {
   // useParams reads dynamic values from the route, so /project/:id gives us this project's id.
@@ -56,11 +57,14 @@ function ProjectWorkspace({ user }) {
     }));
   }, []);
 
+  const history = useCanvasHistory({ disabled: isCropping, maxStates: 100 });
+  const executeHistoryAction = history.execute;
+  const isEditorBusy = isCropping || history.isRestoring || !history.isReady;
   const { save, saveStatus } = useProjectSave({
     projectId: id,
     canvas: editorState.canvas,
     onSaved: handleSavedProject,
-    disabled: isCropping,
+    disabled: isEditorBusy,
   });
   const { exportCanvas, isExporting } = useCanvasExport(editorState.canvas);
 
@@ -71,12 +75,15 @@ function ProjectWorkspace({ user }) {
   }, [save]);
 
   const handleAddText = useCallback((presetId) => {
-    const text = addTextToCanvas(editorState.canvas, presetId);
+    const text = executeHistoryAction(
+      { type: "add-text", label: "Add text" },
+      () => addTextToCanvas(editorState.canvas, presetId),
+    );
     if (text) handleEditorStateChange({
       canvas: editorState.canvas,
       selectedObject: text,
     });
-  }, [editorState.canvas, handleEditorStateChange]);
+  }, [editorState.canvas, executeHistoryAction, handleEditorStateChange]);
 
   const handleExport = useCallback(async (options) => {
     try {
@@ -169,7 +176,8 @@ function ProjectWorkspace({ user }) {
               saveStatus={saveStatus}
               onExport={() => setIsExportDialogOpen(true)}
               isExporting={isExporting}
-              isEditingDisabled={isCropping}
+              isEditingDisabled={isEditorBusy}
+              history={history}
             />
             <MobileEditorHeader
               projectTitle={project.title}
@@ -180,7 +188,8 @@ function ProjectWorkspace({ user }) {
               onAddText={handleAddText}
               onExport={() => setIsExportDialogOpen(true)}
               isExporting={isExporting}
-              isEditingDisabled={isCropping}
+              isEditingDisabled={isEditorBusy}
+              history={history}
             />
 
             {/* This composition leaves clear extension points for future canvas state, tools, and element properties. */}
@@ -189,10 +198,11 @@ function ProjectWorkspace({ user }) {
                 onUpload={handleImageUpload}
                 isUploading={isUploading}
                 onAddText={handleAddText}
-                disabled={isCropping}
+                disabled={isEditorBusy}
               />
               {/* The workspace provides project data; CanvasArea owns all Fabric state and interactions. */}
               <CanvasArea
+                key={id}
                 canvasImage={project.canvasImage}
                 canvasData={project.canvasData}
                 savedCanvasWidth={project.canvasWidth}
@@ -200,12 +210,14 @@ function ProjectWorkspace({ user }) {
                 projectTitle={project.title}
                 onEditorStateChange={handleEditorStateChange}
                 onCropModeChange={setIsCropping}
+                history={history}
               />
               <PropertiesPanel
                 project={project}
                 editorState={editorState}
                 onObjectChange={handleObjectChange}
-                isEditingDisabled={isCropping}
+                isEditingDisabled={isEditorBusy}
+                history={history}
               />
             </div>
           </div>

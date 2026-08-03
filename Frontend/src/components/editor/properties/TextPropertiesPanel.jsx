@@ -25,7 +25,17 @@ const ALIGNMENTS = [
 const labelClass = "mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400";
 const fieldClass = "h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
 
-function NumberField({ label, value, onChange, min, max, step = 1, suffix }) {
+function NumberField({
+  label,
+  value,
+  onChange,
+  onInteractionStart,
+  onInteractionEnd,
+  min,
+  max,
+  step = 1,
+  suffix,
+}) {
   const displayValue = Number.isFinite(value)
     ? Math.round(value * 100) / 100
     : 0;
@@ -40,6 +50,11 @@ function NumberField({ label, value, onChange, min, max, step = 1, suffix }) {
           min={min}
           max={max}
           step={step}
+          onFocus={onInteractionStart}
+          onBlur={onInteractionEnd}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.currentTarget.blur();
+          }}
           onChange={(event) => {
             if (Number.isFinite(event.target.valueAsNumber)) {
               onChange(event.target.valueAsNumber);
@@ -76,13 +91,24 @@ function FormatButton({ active, label, children, onClick }) {
   );
 }
 
-function TextPropertiesPanel({ canvas, object, onObjectChange }) {
-  const commit = (properties) => {
+function TextPropertiesPanel({ canvas, object, onObjectChange, history }) {
+  const apply = (properties) => {
     object.set(properties);
     object.setCoords();
     canvas.requestRenderAll();
     onObjectChange(object);
   };
+
+  const execute = (action, properties) =>
+    history.execute(action, () => apply(properties));
+
+  const update = (action, properties) =>
+    history.update(action, () => apply(properties));
+
+  const interactionProps = (action) => ({
+    onInteractionStart: () => history.begin(action),
+    onInteractionEnd: () => history.commit(action),
+  });
 
   const fill = typeof object.fill === "string" && object.fill.startsWith("#")
     ? object.fill
@@ -94,7 +120,7 @@ function TextPropertiesPanel({ canvas, object, onObjectChange }) {
         <span className={labelClass}>Font family</span>
         <select
           value={object.fontFamily || "Arial"}
-          onChange={(event) => commit({ fontFamily: event.target.value })}
+          onChange={(event) => execute("Change font family", { fontFamily: event.target.value })}
           className={fieldClass}
         >
           {FONT_FAMILIES.map((font) => (
@@ -111,14 +137,15 @@ function TextPropertiesPanel({ canvas, object, onObjectChange }) {
           value={object.fontSize}
           min={1}
           max={500}
-          onChange={(fontSize) => commit({ fontSize: Math.max(1, fontSize) })}
+          onChange={(fontSize) => update("Change font size", { fontSize: Math.max(1, fontSize) })}
+          {...interactionProps("Change font size")}
           suffix="px"
         />
         <label className="block">
           <span className={labelClass}>Font weight</span>
           <select
             value={Number(object.fontWeight) || 400}
-            onChange={(event) => commit({ fontWeight: Number(event.target.value) })}
+            onChange={(event) => execute("Change font weight", { fontWeight: Number(event.target.value) })}
             className={fieldClass}
           >
             {FONT_WEIGHTS.map((weight) => (
@@ -132,14 +159,14 @@ function TextPropertiesPanel({ canvas, object, onObjectChange }) {
         <FormatButton
           active={object.fontStyle === "italic"}
           label="Italic"
-          onClick={() => commit({ fontStyle: object.fontStyle === "italic" ? "normal" : "italic" })}
+          onClick={() => execute("Change italic style", { fontStyle: object.fontStyle === "italic" ? "normal" : "italic" })}
         >
           <span className="font-serif text-base font-semibold italic">I</span>
         </FormatButton>
         <FormatButton
           active={Boolean(object.underline)}
           label="Underline"
-          onClick={() => commit({ underline: !object.underline })}
+          onClick={() => execute("Change underline style", { underline: !object.underline })}
         >
           <span className="text-base font-semibold underline">U</span>
         </FormatButton>
@@ -147,7 +174,9 @@ function TextPropertiesPanel({ canvas, object, onObjectChange }) {
           <input
             type="color"
             value={fill}
-            onChange={(event) => commit({ fill: event.target.value })}
+            onFocus={() => history.begin("Change text color")}
+            onBlur={() => history.commit("Change text color")}
+            onChange={(event) => update("Change text color", { fill: event.target.value })}
             className="size-6 cursor-pointer rounded border-0 bg-transparent p-0"
             aria-label="Text color"
           />
@@ -163,7 +192,7 @@ function TextPropertiesPanel({ canvas, object, onObjectChange }) {
               key={alignment.value}
               active={(object.textAlign || "left") === alignment.value}
               label={alignment.label}
-              onClick={() => commit({ textAlign: alignment.value })}
+              onClick={() => execute("Change text alignment", { textAlign: alignment.value })}
             >
               <svg viewBox="0 0 24 24" className="size-4.5" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d={alignment.icon} strokeLinecap="round" />
@@ -180,7 +209,8 @@ function TextPropertiesPanel({ canvas, object, onObjectChange }) {
           min={-20}
           max={100}
           step={0.1}
-          onChange={(spacing) => commit({ charSpacing: spacing * 10 })}
+          onChange={(spacing) => update("Change letter spacing", { charSpacing: spacing * 10 })}
+          {...interactionProps("Change letter spacing")}
           suffix="%"
         />
         <NumberField
@@ -189,7 +219,8 @@ function TextPropertiesPanel({ canvas, object, onObjectChange }) {
           min={0.5}
           max={5}
           step={0.1}
-          onChange={(lineHeight) => commit({ lineHeight: Math.max(0.5, lineHeight) })}
+          onChange={(lineHeight) => update("Change line height", { lineHeight: Math.max(0.5, lineHeight) })}
+          {...interactionProps("Change line height")}
         />
       </div>
 
@@ -203,16 +234,40 @@ function TextPropertiesPanel({ canvas, object, onObjectChange }) {
           min="0"
           max="100"
           value={Math.round((object.opacity ?? 1) * 100)}
-          onChange={(event) => commit({ opacity: Number(event.target.value) / 100 })}
+          onFocus={() => history.begin("Change text opacity")}
+          onPointerDown={() => history.begin("Change text opacity")}
+          onPointerUp={() => history.commit("Change text opacity")}
+          onPointerCancel={() => history.commit("Change text opacity")}
+          onKeyUp={() => history.commit("Change text opacity")}
+          onBlur={() => history.commit("Change text opacity")}
+          onChange={(event) => update("Change text opacity", { opacity: Number(event.target.value) / 100 })}
           className="h-2 w-full cursor-pointer accent-blue-600"
         />
       </label>
 
       <div className="grid grid-cols-2 gap-3">
-        <NumberField label="X position" value={object.left || 0} onChange={(left) => commit({ left })} suffix="px" />
-        <NumberField label="Y position" value={object.top || 0} onChange={(top) => commit({ top })} suffix="px" />
+        <NumberField
+          label="X position"
+          value={object.left || 0}
+          onChange={(left) => update("Move text", { left })}
+          suffix="px"
+          {...interactionProps("Move text")}
+        />
+        <NumberField
+          label="Y position"
+          value={object.top || 0}
+          onChange={(top) => update("Move text", { top })}
+          suffix="px"
+          {...interactionProps("Move text")}
+        />
         <div className="col-span-2">
-          <NumberField label="Rotation" value={object.angle || 0} onChange={(angle) => commit({ angle })} suffix="°" />
+          <NumberField
+            label="Rotation"
+            value={object.angle || 0}
+            onChange={(angle) => update("Rotate text", { angle })}
+            suffix="°"
+            {...interactionProps("Rotate text")}
+          />
         </div>
       </div>
     </div>

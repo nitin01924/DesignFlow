@@ -7,6 +7,7 @@ const actions = [
       clone.set({
         left: (object.left || 0) + 16,
         top: (object.top || 0) + 16,
+        historyId: undefined,
         aspectRatioLocked: object.aspectRatioLocked,
         lockedAspectRatio: object.lockedAspectRatio,
       });
@@ -45,7 +46,13 @@ const actions = [
   },
 ];
 
-function MobileObjectToolbar({ canvas, selectedObject, onSelectionChange, onCrop }) {
+function MobileObjectToolbar({
+  canvas,
+  selectedObject,
+  onSelectionChange,
+  onCrop,
+  history,
+}) {
   if (!canvas || !selectedObject) {
     return (
       <div className="pointer-events-none absolute inset-x-3 top-3 z-20 flex justify-center md:hidden">
@@ -62,6 +69,16 @@ function MobileObjectToolbar({ canvas, selectedObject, onSelectionChange, onCrop
     onSelectionChange(object || null);
   };
 
+  const runAction = (action) =>
+    history.execute(
+      {
+        type: action.label.toLowerCase().replaceAll(" ", "-"),
+        label: `${action.label} object`,
+      },
+      () => action.run(canvas, selectedObject, finish),
+    );
+  const isHistoryUnavailable = !history.isReady || history.isRestoring;
+
   return (
     <div
       className="absolute inset-x-3 top-3 z-20 flex justify-center md:hidden"
@@ -73,7 +90,8 @@ function MobileObjectToolbar({ canvas, selectedObject, onSelectionChange, onCrop
           <button
             type="button"
             onClick={() => onCrop?.(selectedObject)}
-            className="flex min-w-16 flex-col items-center gap-1 rounded-xl px-3 py-2 text-[11px] font-medium text-slate-700 active:bg-slate-100 dark:text-slate-200 dark:active:bg-slate-800"
+            disabled={isHistoryUnavailable}
+            className="flex min-w-16 flex-col items-center gap-1 rounded-xl px-3 py-2 text-[11px] font-medium text-slate-700 active:bg-slate-100 disabled:opacity-35 dark:text-slate-200 dark:active:bg-slate-800"
           >
             <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
               <path d="M7 3v14a4 4 0 0 0 4 4h10M3 7h14a4 4 0 0 1 4 4v10" strokeLinecap="round" strokeLinejoin="round" />
@@ -85,8 +103,9 @@ function MobileObjectToolbar({ canvas, selectedObject, onSelectionChange, onCrop
           <button
             key={action.label}
             type="button"
-            onClick={() => action.run(canvas, selectedObject, finish)}
-            className={`flex min-w-16 flex-col items-center gap-1 rounded-xl px-3 py-2 text-[11px] font-medium active:bg-slate-100 dark:active:bg-slate-800 ${
+            onClick={() => runAction(action)}
+            disabled={isHistoryUnavailable}
+            className={`flex min-w-16 flex-col items-center gap-1 rounded-xl px-3 py-2 text-[11px] font-medium active:bg-slate-100 disabled:opacity-35 dark:active:bg-slate-800 ${
               action.destructive
                 ? "text-red-600 dark:text-red-400"
                 : "text-slate-700 dark:text-slate-200"

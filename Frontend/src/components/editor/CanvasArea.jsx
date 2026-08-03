@@ -32,12 +32,15 @@ function CanvasArea({
   projectTitle,
   onEditorStateChange,
   onCropModeChange,
+  history,
 }) {
   const canvasElementRef = useRef(null);
   const canvasContainerRef = useRef(null);
   const fabricCanvasRef = useRef(null);
   const fabricImageRef = useRef(null);
   const lastCanvasSizeRef = useRef(null);
+  const hasInitializedHistoryRef = useRef(false);
+  const { attachCanvas, detachCanvas, reset: resetHistory } = history;
   const [isHydrated, setIsHydrated] = useState(false);
   const [selection, setSelection] = useState({
     canvas: null,
@@ -62,6 +65,16 @@ function CanvasArea({
     onSelectionChange: handleSelectionChange,
     onModeChange: onCropModeChange,
   });
+
+  useEffect(() => {
+    if (!selection.canvas) return;
+
+    const blocked = !history.isReady || history.isRestoring;
+    selection.canvas.set({
+      selection: !blocked,
+      skipTargetFind: blocked,
+    });
+  }, [history.isReady, history.isRestoring, selection.canvas]);
 
   useEffect(() => {
     if (!canvasElementRef.current || !canvasContainerRef.current) return;
@@ -132,6 +145,7 @@ function CanvasArea({
     fabricCanvas.on("object:rotating", syncSelection);
     fabricCanvas.on("object:modified", syncSelection);
     fabricCanvas.on("text:changed", syncSelection);
+    attachCanvas(fabricCanvas, { onRestored: handleSelectionChange });
 
     const resizeCanvas = () => {
       const { width, height } =
@@ -180,12 +194,13 @@ function CanvasArea({
       fabricCanvas.off("object:rotating", syncSelection);
       fabricCanvas.off("object:modified", syncSelection);
       fabricCanvas.off("text:changed", syncSelection);
+      detachCanvas(fabricCanvas);
       fabricImageRef.current = null;
       lastCanvasSizeRef.current = null;
       fabricCanvasRef.current = null;
       void fabricCanvas.dispose();
     };
-  }, [handleSelectionChange, onEditorStateChange]);
+  }, [attachCanvas, detachCanvas, handleSelectionChange, onEditorStateChange]);
 
   useEffect(() => {
     const fabricCanvas = fabricCanvasRef.current;
@@ -248,6 +263,10 @@ function CanvasArea({
     const loadCanvasImage = async () => {
       if (!canvasImage) {
         fabricCanvas.requestRenderAll();
+        if (!hasInitializedHistoryRef.current) {
+          resetHistory();
+          hasInitializedHistoryRef.current = true;
+        }
         return;
       }
 
@@ -258,6 +277,10 @@ function CanvasArea({
         .find((object) => object.type === "image" && object.getSrc?.() === canvasImage);
       if (existingImage) {
         fabricImageRef.current = existingImage;
+        if (!hasInitializedHistoryRef.current) {
+          resetHistory();
+          hasInitializedHistoryRef.current = true;
+        }
         return;
       }
 
@@ -296,6 +319,14 @@ function CanvasArea({
         if (error.name !== "AbortError") {
           console.error("Unable to load the project image into Fabric", error);
         }
+      } finally {
+        if (
+          !abortController.signal.aborted &&
+          !hasInitializedHistoryRef.current
+        ) {
+          resetHistory();
+          hasInitializedHistoryRef.current = true;
+        }
       }
     };
 
@@ -304,7 +335,7 @@ function CanvasArea({
     return () => {
       abortController.abort();
     };
-  }, [canvasImage, handleSelectionChange, isHydrated]);
+  }, [canvasImage, isHydrated, resetHistory]);
 
   return (
     <div className="relative flex h-full min-h-0 min-w-0 flex-col">
@@ -321,6 +352,7 @@ function CanvasArea({
               selectedObject={selection.object}
               onSelectionChange={handleSelectionChange}
               onCrop={crop.startCrop}
+              history={history}
             />
           </div>
           <MobileObjectToolbar
@@ -328,6 +360,7 @@ function CanvasArea({
             selectedObject={selection.object}
             onSelectionChange={handleSelectionChange}
             onCrop={crop.startCrop}
+            history={history}
           />
         </>
       )}

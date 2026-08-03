@@ -1,5 +1,5 @@
-function MobileImagePropertiesPanel({ canvas, object, onObjectChange }) {
-  const commit = (properties) => {
+function MobileImagePropertiesPanel({ canvas, object, onObjectChange, history }) {
+  const apply = (properties) => {
     object.set(properties);
     object.setCoords();
     canvas.requestRenderAll();
@@ -10,22 +10,30 @@ function MobileImagePropertiesPanel({ canvas, object, onObjectChange }) {
 
   const toggleAspectRatio = (event) => {
     const locked = event.target.checked;
-    object.set({
-      aspectRatioLocked: locked,
-      lockedAspectRatio: locked
-        ? object.getScaledWidth() / Math.max(1, object.getScaledHeight())
-        : undefined,
-    });
-    object.setControlsVisibility({
-      mt: !locked,
-      mb: !locked,
-      ml: !locked,
-      mr: !locked,
-    });
-    canvas.set({ uniformScaling: locked });
-    object.setCoords();
-    canvas.requestRenderAll();
-    onObjectChange(object);
+    history.execute(
+      {
+        type: locked ? "lock-aspect-ratio" : "unlock-aspect-ratio",
+        label: locked ? "Lock aspect ratio" : "Unlock aspect ratio",
+      },
+      () => {
+        object.set({
+          aspectRatioLocked: locked,
+          lockedAspectRatio: locked
+            ? object.getScaledWidth() / Math.max(1, object.getScaledHeight())
+            : undefined,
+        });
+        object.setControlsVisibility({
+          mt: !locked,
+          mb: !locked,
+          ml: !locked,
+          mr: !locked,
+        });
+        canvas.set({ uniformScaling: locked });
+        object.setCoords();
+        canvas.requestRenderAll();
+        onObjectChange(object);
+      },
+    );
   };
 
   return (
@@ -44,8 +52,16 @@ function MobileImagePropertiesPanel({ canvas, object, onObjectChange }) {
           min="0"
           max="100"
           value={Math.round((object.opacity ?? 1) * 100)}
+          onFocus={() => history.begin("Change image opacity")}
+          onPointerDown={() => history.begin("Change image opacity")}
+          onPointerUp={() => history.commit("Change image opacity")}
+          onPointerCancel={() => history.commit("Change image opacity")}
+          onKeyUp={() => history.commit("Change image opacity")}
+          onBlur={() => history.commit("Change image opacity")}
           onChange={(event) =>
-            commit({ opacity: Number(event.target.value) / 100 })
+            history.update("Change image opacity", () =>
+              apply({ opacity: Number(event.target.value) / 100 }),
+            )
           }
           className="h-3 w-full cursor-pointer accent-blue-600"
         />

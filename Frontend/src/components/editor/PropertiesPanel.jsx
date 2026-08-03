@@ -37,6 +37,7 @@ function ObjectProperties({
   selectedObject,
   SelectedObjectPanel,
   onObjectChange,
+  history,
 }) {
   if (SelectedObjectPanel) {
     return (
@@ -44,6 +45,7 @@ function ObjectProperties({
         canvas={editorState.canvas}
         object={selectedObject}
         onObjectChange={onObjectChange}
+        history={history}
       />
     );
   }
@@ -62,6 +64,7 @@ function PropertiesPanel({
   editorState,
   onObjectChange,
   isEditingDisabled = false,
+  history,
 }) {
   const bottomSheet = useBottomSheet("half");
   const selectedObject = editorState?.selectedObject;
@@ -118,6 +121,7 @@ function PropertiesPanel({
                 selectedObject={selectedObject}
                 SelectedObjectPanel={SelectedObjectPanel}
                 onObjectChange={onObjectChange}
+                history={history}
               />
             </div>
           </div>
@@ -171,6 +175,7 @@ function PropertiesPanel({
               selectedObject={selectedObject}
               SelectedObjectPanel={MobileSelectedObjectPanel}
               onObjectChange={onObjectChange}
+              history={history}
             />
           </div>
         </aside>

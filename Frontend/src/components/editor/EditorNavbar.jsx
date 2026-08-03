@@ -6,6 +6,39 @@ const statusLabels = {
   failed: "Failed",
 };
 
+function HistoryButton({ direction, history, disabled }) {
+  const isUndo = direction === "undo";
+  const available = isUndo ? history.canUndo : history.canRedo;
+  const actionLabel = isUndo ? history.undoLabel : history.redoLabel;
+  const label = `${isUndo ? "Undo" : "Redo"}${actionLabel ? ` ${actionLabel}` : ""}`;
+
+  return (
+    <button
+      type="button"
+      onClick={() => void (isUndo ? history.undo() : history.redo())}
+      disabled={disabled || !available}
+      title={`${label} (${isUndo ? "Ctrl/Cmd+Z" : "Ctrl/Cmd+Shift+Z"})`}
+      aria-label={label}
+      className="grid size-9 place-items-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        className="size-5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        aria-hidden="true"
+      >
+        {isUndo ? (
+          <path d="M9 7 4 12l5 5M5 12h8a6 6 0 0 1 6 6" strokeLinecap="round" strokeLinejoin="round" />
+        ) : (
+          <path d="m15 7 5 5-5 5m4-5h-8a6 6 0 0 0-6 6" strokeLinecap="round" strokeLinejoin="round" />
+        )}
+      </svg>
+    </button>
+  );
+}
+
 function EditorNavbar({
   user,
   projectTitle,
@@ -14,6 +47,7 @@ function EditorNavbar({
   onExport,
   isExporting,
   isEditingDisabled,
+  history,
 }) {
   const userName = user?.name?.trim() || "User";
   const userInitial = userName.charAt(0).toUpperCase();
@@ -64,6 +98,10 @@ function EditorNavbar({
         >
           {statusLabels[saveStatus]}
         </span>
+        <div className="flex items-center gap-0.5 border-l border-slate-200 pl-2 dark:border-slate-700" role="group" aria-label="Canvas history">
+          <HistoryButton direction="undo" history={history} disabled={isEditingDisabled} />
+          <HistoryButton direction="redo" history={history} disabled={isEditingDisabled} />
+        </div>
         <button
           type="button"
           onClick={onSave}

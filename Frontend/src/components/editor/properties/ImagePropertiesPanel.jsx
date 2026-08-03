@@ -4,7 +4,17 @@ const clamp = (value, minimum, maximum) =>
 const toDisplayNumber = (value) =>
   Number.isFinite(value) ? Math.round(value * 100) / 100 : 0;
 
-function NumberField({ label, value, onChange, min, max, step = 1, suffix }) {
+function NumberField({
+  label,
+  value,
+  onChange,
+  onInteractionStart,
+  onInteractionEnd,
+  min,
+  max,
+  step = 1,
+  suffix,
+}) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -17,6 +27,11 @@ function NumberField({ label, value, onChange, min, max, step = 1, suffix }) {
           min={min}
           max={max}
           step={step}
+          onFocus={onInteractionStart}
+          onBlur={onInteractionEnd}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.currentTarget.blur();
+          }}
           onChange={(event) => {
             const nextValue = event.target.valueAsNumber;
             if (Number.isFinite(nextValue)) onChange(nextValue);
@@ -33,30 +48,38 @@ function NumberField({ label, value, onChange, min, max, step = 1, suffix }) {
   );
 }
 
-function ImagePropertiesPanel({ canvas, object, onObjectChange }) {
+function ImagePropertiesPanel({ canvas, object, onObjectChange, history }) {
   const scaledWidth = object.getScaledWidth();
   const scaledHeight = object.getScaledHeight();
   const isAspectRatioLocked = Boolean(object.aspectRatioLocked);
 
-  const commit = (properties) => {
+  const apply = (properties) => {
     object.set(properties);
     object.setCoords();
     canvas.requestRenderAll();
     onObjectChange(object);
   };
 
+  const update = (action, properties) =>
+    history.update(action, () => apply(properties));
+
+  const interactionProps = (action) => ({
+    onInteractionStart: () => history.begin(action),
+    onInteractionEnd: () => history.commit(action),
+  });
+
   const updateWidth = (nextWidth) => {
     const width = Math.max(1, nextWidth);
     const nextScaleX = width / Math.max(1, object.width || 1);
 
     if (!isAspectRatioLocked) {
-      commit({ scaleX: nextScaleX });
+      update("Resize image", { scaleX: nextScaleX });
       return;
     }
 
     const ratio =
       object.lockedAspectRatio || scaledWidth / Math.max(1, scaledHeight);
-    commit({
+    update("Resize image", {
       scaleX: nextScaleX,
       scaleY: width / ratio / Math.max(1, object.height || 1),
     });
@@ -67,13 +90,13 @@ function ImagePropertiesPanel({ canvas, object, onObjectChange }) {
     const nextScaleY = height / Math.max(1, object.height || 1);
 
     if (!isAspectRatioLocked) {
-      commit({ scaleY: nextScaleY });
+      update("Resize image", { scaleY: nextScaleY });
       return;
     }
 
     const ratio =
       object.lockedAspectRatio || scaledWidth / Math.max(1, scaledHeight);
-    commit({
+    update("Resize image", {
       scaleX: (height * ratio) / Math.max(1, object.width || 1),
       scaleY: nextScaleY,
     });
@@ -84,20 +107,28 @@ function ImagePropertiesPanel({ canvas, object, onObjectChange }) {
     const ratio =
       object.getScaledWidth() / Math.max(1, object.getScaledHeight());
 
-    object.set({
-      aspectRatioLocked: locked,
-      lockedAspectRatio: locked ? ratio : undefined,
-    });
-    object.setControlsVisibility({
-      mt: !locked,
-      mb: !locked,
-      ml: !locked,
-      mr: !locked,
-    });
-    canvas.set({ uniformScaling: locked });
-    object.setCoords();
-    canvas.requestRenderAll();
-    onObjectChange(object);
+    history.execute(
+      {
+        type: locked ? "lock-aspect-ratio" : "unlock-aspect-ratio",
+        label: locked ? "Lock aspect ratio" : "Unlock aspect ratio",
+      },
+      () => {
+        object.set({
+          aspectRatioLocked: locked,
+          lockedAspectRatio: locked ? ratio : undefined,
+        });
+        object.setControlsVisibility({
+          mt: !locked,
+          mb: !locked,
+          ml: !locked,
+          mr: !locked,
+        });
+        canvas.set({ uniformScaling: locked });
+        object.setCoords();
+        canvas.requestRenderAll();
+        onObjectChange(object);
+      },
+    );
   };
 
   return (
@@ -108,6 +139,7 @@ function ImagePropertiesPanel({ canvas, object, onObjectChange }) {
           value={scaledWidth}
           min={1}
           onChange={updateWidth}
+          {...interactionProps("Resize image")}
           suffix="px"
         />
         <NumberField
@@ -115,18 +147,21 @@ function ImagePropertiesPanel({ canvas, object, onObjectChange }) {
           value={scaledHeight}
           min={1}
           onChange={updateHeight}
+          {...interactionProps("Resize image")}
           suffix="px"
         />
         <NumberField
           label="X position"
           value={object.left || 0}
-          onChange={(left) => commit({ left })}
+          onChange={(left) => update("Move image", { left })}
+          {...interactionProps("Move image")}
           suffix="px"
         />
         <NumberField
           label="Y position"
           value={object.top || 0}
-          onChange={(top) => commit({ top })}
+          onChange={(top) => update("Move image", { top })}
+          {...interactionProps("Move image")}
           suffix="px"
         />
       </div>
@@ -134,7 +169,8 @@ function ImagePropertiesPanel({ canvas, object, onObjectChange }) {
       <NumberField
         label="Rotation"
         value={object.angle || 0}
-        onChange={(angle) => commit({ angle })}
+        onChange={(angle) => update("Rotate image", { angle })}
+        {...interactionProps("Rotate image")}
         step={1}
         suffix="°"
       />
@@ -150,8 +186,14 @@ function ImagePropertiesPanel({ canvas, object, onObjectChange }) {
           max="100"
           step="1"
           value={Math.round((object.opacity ?? 1) * 100)}
+          onFocus={() => history.begin("Change image opacity")}
+          onPointerDown={() => history.begin("Change image opacity")}
+          onPointerUp={() => history.commit("Change image opacity")}
+          onPointerCancel={() => history.commit("Change image opacity")}
+          onKeyUp={() => history.commit("Change image opacity")}
+          onBlur={() => history.commit("Change image opacity")}
           onChange={(event) =>
-            commit({
+            update("Change image opacity", {
               opacity: clamp(Number(event.target.value) / 100, 0, 1),
             })
           }

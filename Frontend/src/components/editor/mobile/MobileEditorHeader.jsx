@@ -12,6 +12,7 @@ function MobileEditorHeader({
   onExport,
   isExporting,
   isEditingDisabled,
+  history,
 }) {
   const fileInputRef = useRef(null);
   const [showTextTools, setShowTextTools] = useState(false);
@@ -46,6 +47,30 @@ function MobileEditorHeader({
         {projectTitle}
       </h1>
       <div className="flex shrink-0 items-center gap-1">
+        <button
+          type="button"
+          onClick={() => void history.undo()}
+          disabled={!history.canUndo || history.isRestoring || isEditingDisabled}
+          className="grid size-9 place-items-center rounded-full text-slate-600 active:bg-slate-100 disabled:opacity-30 dark:text-slate-300 dark:active:bg-slate-800"
+          aria-label={history.undoLabel ? `Undo ${history.undoLabel}` : "Undo"}
+          title="Undo"
+        >
+          <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+            <path d="M9 7 4 12l5 5M5 12h8a6 6 0 0 1 6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={() => void history.redo()}
+          disabled={!history.canRedo || history.isRestoring || isEditingDisabled}
+          className="grid size-9 place-items-center rounded-full text-slate-600 active:bg-slate-100 disabled:opacity-30 dark:text-slate-300 dark:active:bg-slate-800"
+          aria-label={history.redoLabel ? `Redo ${history.redoLabel}` : "Redo"}
+          title="Redo"
+        >
+          <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+            <path d="m15 7 5 5-5 5m4-5h-8a6 6 0 0 0-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
         <button
           type="button"
           onClick={() => setShowTextTools((visible) => !visible)}

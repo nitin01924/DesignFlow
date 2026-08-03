@@ -40,8 +40,16 @@ function ToolbarButton({ action, onClick }) {
   );
 }
 
-function EditorToolbar({ canvas, selectedObject, onSelectionChange, onCrop }) {
-  const hasSelection = Boolean(canvas && selectedObject);
+function EditorToolbar({
+  canvas,
+  selectedObject,
+  onSelectionChange,
+  onCrop,
+  history,
+}) {
+  const hasSelection = Boolean(
+    canvas && selectedObject && history.isReady && !history.isRestoring,
+  );
   const isMovementLocked = Boolean(
     selectedObject?.lockMovementX && selectedObject?.lockMovementY,
   );
@@ -52,50 +60,86 @@ function EditorToolbar({ canvas, selectedObject, onSelectionChange, onCrop }) {
     onSelectionChange?.(object || null);
   };
 
-  const deleteSelection = () => {
-    // getActiveObjects also handles a multi-object ActiveSelection correctly.
-    const objects = canvas.getActiveObjects();
-    canvas.discardActiveObject();
-    canvas.remove(...objects);
-    finishAction(null);
-  };
+  const deleteSelection = () =>
+    history.execute(
+      { type: `delete-${selectedObject?.type || "object"}`, label: "Delete object" },
+      () => {
+        // getActiveObjects also handles a multi-object ActiveSelection correctly.
+        const objects = canvas.getActiveObjects();
+        canvas.discardActiveObject();
+        canvas.remove(...objects);
+        finishAction(null);
+      },
+    );
 
-  const duplicateSelection = async () => {
-    // Fabric 7 clone() is asynchronous because some objects may contain images.
-    const clone = await selectedObject.clone();
-    clone.set({
-      left: (selectedObject.left || 0) + 20,
-      top: (selectedObject.top || 0) + 20,
-      aspectRatioLocked: selectedObject.aspectRatioLocked,
-      lockedAspectRatio: selectedObject.lockedAspectRatio,
-    });
-    if (selectedObject.type === "image") {
-      const locked = Boolean(selectedObject.aspectRatioLocked);
-      clone.setControlsVisibility({
-        mt: !locked,
-        mb: !locked,
-        ml: !locked,
-        mr: !locked,
-      });
-    }
-    canvas.add(clone);
-    canvas.setActiveObject(clone);
-    finishAction(clone);
-  };
+  const duplicateSelection = () =>
+    history.execute(
+      { type: "duplicate-object", label: "Duplicate object" },
+      async () => {
+        // Fabric 7 clone() is asynchronous because some objects may contain images.
+        const clone = await selectedObject.clone();
+        clone.set({
+          left: (selectedObject.left || 0) + 20,
+          top: (selectedObject.top || 0) + 20,
+          historyId: undefined,
+          aspectRatioLocked: selectedObject.aspectRatioLocked,
+          lockedAspectRatio: selectedObject.lockedAspectRatio,
+        });
+        if (selectedObject.type === "image") {
+          const locked = Boolean(selectedObject.aspectRatioLocked);
+          clone.setControlsVisibility({
+            mt: !locked,
+            mb: !locked,
+            ml: !locked,
+            mr: !locked,
+          });
+        }
+        canvas.add(clone);
+        canvas.setActiveObject(clone);
+        finishAction(clone);
+      },
+    );
 
-  const rotate = (degrees) => {
-    // rotate() respects Fabric's origin and normalizes the object's angle handling.
-    selectedObject.rotate((selectedObject.angle || 0) + degrees);
-    finishAction();
-  };
+  const rotate = (degrees) =>
+    history.execute(
+      { type: "rotate-object", label: "Rotate object" },
+      () => {
+        // rotate() respects Fabric's origin and normalizes the object's angle handling.
+        selectedObject.rotate((selectedObject.angle || 0) + degrees);
+        finishAction();
+      },
+    );
 
-  const toggleMovementLock = () => {
-    selectedObject.set({
-      lockMovementX: !isMovementLocked,
-      lockMovementY: !isMovementLocked,
-    });
-    finishAction();
-  };
+  const toggleMovementLock = () =>
+    history.execute(
+      {
+        type: isMovementLocked ? "unlock-object" : "lock-object",
+        label: isMovementLocked ? "Unlock object" : "Lock object",
+      },
+      () => {
+        selectedObject.set({
+          lockMovementX: !isMovementLocked,
+          lockMovementY: !isMovementLocked,
+        });
+        finishAction();
+      },
+    );
+
+  const changeLayerOrder = (direction) =>
+    history.execute(
+      {
+        type: direction === "forward" ? "bring-forward" : "send-backward",
+        label: direction === "forward" ? "Bring object forward" : "Send object backward",
+      },
+      () => {
+        if (direction === "forward") {
+          canvas.bringObjectForward(selectedObject);
+        } else {
+          canvas.sendObjectBackwards(selectedObject);
+        }
+        finishAction();
+      },
+    );
 
   // New commands can be appended here without changing the toolbar markup.
   const actions = [
@@ -105,8 +149,8 @@ function EditorToolbar({ canvas, selectedObject, onSelectionChange, onCrop }) {
     { label: "Duplicate selected object", shortLabel: "Duplicate", icon: "duplicate", run: duplicateSelection },
     { label: "Rotate left 90 degrees", shortLabel: "Rotate left", icon: "rotateLeft", run: () => rotate(-90) },
     { label: "Rotate right 90 degrees", shortLabel: "Rotate right", icon: "rotateRight", run: () => rotate(90) },
-    { label: "Bring forward", icon: "forward", run: () => { canvas.bringObjectForward(selectedObject); finishAction(); } },
-    { label: "Send backward", icon: "backward", run: () => { canvas.sendObjectBackwards(selectedObject); finishAction(); } },
+    { label: "Bring forward", icon: "forward", run: () => changeLayerOrder("forward") },
+    { label: "Send backward", icon: "backward", run: () => changeLayerOrder("backward") },
     {
       label: isMovementLocked ? "Unlock object movement" : "Lock object movement",
       shortLabel: isMovementLocked ? "Unlock" : "Lock",
