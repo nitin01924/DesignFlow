@@ -8,6 +8,9 @@ const rotateVector = (x, y, angle) => {
   );
 };
 
+const clamp = (value, minimum, maximum) =>
+  Math.min(maximum, Math.max(minimum, value));
+
 export const getSourceDimensions = (image) => {
   const element = image.getElement();
   return {
@@ -27,6 +30,94 @@ export const getExpandedImageCenter = (image, sourceWidth, sourceHeight) => {
   );
 
   return visibleCenter.add(centerOffset);
+};
+
+export const getCropZoomLimits = (
+  image,
+  frame,
+  sourceWidth,
+  sourceHeight,
+) => {
+  const baseScaleX = Math.max(0.0001, Math.abs(image.scaleX || 1));
+  const baseScaleY = Math.max(0.0001, Math.abs(image.scaleY || 1));
+  const frameWidth = frame.width * Math.abs(frame.scaleX || 1);
+  const frameHeight = frame.height * Math.abs(frame.scaleY || 1);
+  const minimumZoom = Math.max(
+    frameWidth / Math.max(1, sourceWidth * baseScaleX),
+    frameHeight / Math.max(1, sourceHeight * baseScaleY),
+  );
+
+  return {
+    baseScaleX,
+    baseScaleY,
+    minimumZoom,
+    // A generous cap prevents accidental runaway scales without limiting
+    // normal detail work on high-resolution images.
+    maximumZoom: Math.max(1, minimumZoom) * 32,
+  };
+};
+
+export const constrainImageToCropFrame = (
+  image,
+  frame,
+  {
+    sourceWidth,
+    sourceHeight,
+    baseScaleX,
+    baseScaleY,
+    minimumZoom,
+    maximumZoom,
+    scaleSignX = 1,
+    scaleSignY = 1,
+  },
+) => {
+  const zoomX = Math.abs(image.scaleX || 0) / baseScaleX;
+  const zoomY = Math.abs(image.scaleY || 0) / baseScaleY;
+  const zoom = clamp(
+    Math.max(zoomX, zoomY, minimumZoom),
+    minimumZoom,
+    maximumZoom,
+  );
+
+  image.set({
+    scaleX: scaleSignX * baseScaleX * zoom,
+    scaleY: scaleSignY * baseScaleY * zoom,
+  });
+
+  const frameCenter = frame.getCenterPoint();
+  const imageCenter = image.getCenterPoint();
+  const angle = frame.angle || 0;
+  const localOffset = rotateVector(
+    imageCenter.x - frameCenter.x,
+    imageCenter.y - frameCenter.y,
+    -angle,
+  );
+  const maximumOffsetX = Math.max(
+    0,
+    (sourceWidth * Math.abs(image.scaleX || 1) -
+      frame.width * Math.abs(frame.scaleX || 1)) /
+      2,
+  );
+  const maximumOffsetY = Math.max(
+    0,
+    (sourceHeight * Math.abs(image.scaleY || 1) -
+      frame.height * Math.abs(frame.scaleY || 1)) /
+      2,
+  );
+  const constrainedOffset = rotateVector(
+    clamp(localOffset.x, -maximumOffsetX, maximumOffsetX),
+    clamp(localOffset.y, -maximumOffsetY, maximumOffsetY),
+    angle,
+  );
+
+  image.setPositionByOrigin(
+    frameCenter.add(constrainedOffset),
+    "center",
+    "center",
+  );
+  image.setCoords();
+
+  return zoom;
 };
 
 export const calculateCropResult = (
