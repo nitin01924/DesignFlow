@@ -1,6 +1,8 @@
+import { useState } from "react";
 import ImagePropertiesPanel from "./properties/ImagePropertiesPanel";
 import MobileImagePropertiesPanel from "./properties/MobileImagePropertiesPanel";
 import TextPropertiesPanel from "./properties/TextPropertiesPanel";
+import LayersPanel from "./layers/LayersPanel";
 import { useBottomSheet } from "./mobile/useBottomSheet";
 
 const propertyPanelByType = {
@@ -17,19 +19,32 @@ const mobilePropertyPanelByType = {
   textbox: TextPropertiesPanel,
 };
 
-function formatDate(date) {
-  if (!date) return "Not available";
+const inspectorTabs = [
+  { id: "layers", label: "Layers" },
+  { id: "properties", label: "Properties" },
+];
 
-  const parsedDate = new Date(date);
-  if (Number.isNaN(parsedDate.getTime())) return "Not available";
-
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(parsedDate);
+function InspectorTabs({ activeTab, onChange, labelledBy }) {
+  return (
+    <div className="grid h-10 grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-900" role="tablist" aria-label={labelledBy}>
+      {inspectorTabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          role="tab"
+          aria-selected={activeTab === tab.id}
+          onClick={() => onChange(tab.id)}
+          className={`rounded-lg px-3 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-600 ${
+            activeTab === tab.id
+              ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
+              : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function ObjectProperties({
@@ -39,6 +54,14 @@ function ObjectProperties({
   onObjectChange,
   history,
 }) {
+  if (selectedObject?.layerLocked) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center text-xs leading-5 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
+        This layer is locked. Unlock it in Layers to edit its properties.
+      </div>
+    );
+  }
+
   if (SelectedObjectPanel) {
     return (
       <SelectedObjectPanel
@@ -54,19 +77,53 @@ function ObjectProperties({
     <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-xs leading-5 text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
       {selectedObject
         ? "Properties for this object type are coming soon."
-        : "Select a canvas element to view its properties."}
+        : "Select a canvas element or layer to view its properties."}
+    </div>
+  );
+}
+
+function PropertiesContent({
+  editorState,
+  selectedObject,
+  SelectedObjectPanel,
+  onObjectChange,
+  history,
+}) {
+  return (
+    <div className="h-full overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Properties</h2>
+          <p className="mt-0.5 truncate text-xs text-slate-400">
+            {selectedObject?.name || "No layer selected"}
+          </p>
+        </div>
+        {selectedObject?.layerLocked && (
+          <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+            Locked
+          </span>
+        )}
+      </div>
+      <ObjectProperties
+        editorState={editorState}
+        selectedObject={selectedObject}
+        SelectedObjectPanel={SelectedObjectPanel}
+        onObjectChange={onObjectChange}
+        history={history}
+      />
     </div>
   );
 }
 
 function PropertiesPanel({
-  project,
   editorState,
   onObjectChange,
   isEditingDisabled = false,
   history,
 }) {
-  const bottomSheet = useBottomSheet("half");
+  const [desktopTab, setDesktopTab] = useState("layers");
+  const [mobileTab, setMobileTab] = useState("layers");
+  const bottomSheet = useBottomSheet("collapsed");
   const selectedObject = editorState?.selectedObject;
   const SelectedObjectPanel = selectedObject
     ? propertyPanelByType[selectedObject.type]
@@ -74,18 +131,17 @@ function PropertiesPanel({
   const MobileSelectedObjectPanel = selectedObject
     ? mobilePropertyPanelByType[selectedObject.type]
     : null;
-  const selectedObjectLabel =
-    selectedObject?.type === "i-text" ||
-    selectedObject?.type === "text" ||
-    selectedObject?.type === "textbox"
-      ? "Text properties"
-      : "Image properties";
+
+  const changeMobileTab = (tab) => {
+    setMobileTab(tab);
+    if (bottomSheet.snap === "collapsed") bottomSheet.settleAt("half");
+  };
 
   if (isEditingDisabled) {
     return (
       <aside
         className="hidden border-l border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 md:block"
-        aria-label="Properties unavailable while cropping"
+        aria-label="Inspector unavailable while the editor is busy"
       />
     );
   }
@@ -93,42 +149,39 @@ function PropertiesPanel({
   return (
     <>
       <aside
-        className="hidden border-l border-slate-200 bg-white transition-colors dark:border-slate-800 dark:bg-slate-950 md:block"
-        aria-label="Project properties"
+        className="hidden min-h-0 border-l border-slate-200 bg-white transition-colors dark:border-slate-800 dark:bg-slate-950 md:block"
+        aria-label="Layers and properties"
       >
-        <div className="h-full w-full overflow-y-auto p-5 md:w-72">
-          <div className="border-b border-slate-100 pb-5 dark:border-slate-800">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Project information</p>
-            <h2 className="mt-2 wrap-break-word text-base font-semibold text-slate-900 dark:text-slate-100">{project.title}</h2>
+        <div className="flex h-full w-72 min-h-0 flex-col">
+          <div className="shrink-0 border-b border-slate-100 p-3 dark:border-slate-800">
+            <InspectorTabs
+              activeTab={desktopTab}
+              onChange={setDesktopTab}
+              labelledBy="Desktop inspector sections"
+            />
           </div>
-
-          <dl className="space-y-4 border-b border-slate-100 py-5 text-sm dark:border-slate-800">
-            <div>
-              <dt className="font-medium text-slate-500 dark:text-slate-400">Created</dt>
-              <dd className="mt-1 text-slate-800 dark:text-slate-200">{formatDate(project.createdAt)}</dd>
-            </div>
-            <div>
-              <dt className="font-medium text-slate-500 dark:text-slate-400">Last updated</dt>
-              <dd className="mt-1 text-slate-800 dark:text-slate-200">{formatDate(project.updatedAt)}</dd>
-            </div>
-          </dl>
-
-          <div className="py-5">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Properties</h3>
-            <div className="mt-4">
-              <ObjectProperties
+          <div className="min-h-0 flex-1" role="tabpanel">
+            {desktopTab === "layers" ? (
+              <LayersPanel
+                canvas={editorState.canvas}
+                selectedObject={selectedObject}
+                onObjectChange={onObjectChange}
+                history={history}
+              />
+            ) : (
+              <PropertiesContent
                 editorState={editorState}
                 selectedObject={selectedObject}
                 SelectedObjectPanel={SelectedObjectPanel}
                 onObjectChange={onObjectChange}
                 history={history}
               />
-            </div>
+            )}
           </div>
         </div>
       </aside>
 
-      {selectedObject && (
+      {editorState.canvas && (
         <aside
           className={`mobile-properties-sheet fixed inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden rounded-t-3xl border border-b-0 border-slate-200 bg-white shadow-[0_-12px_36px_rgba(15,23,42,0.18)] dark:border-slate-700 dark:bg-slate-950 md:hidden ${
             bottomSheet.isDragging
@@ -136,47 +189,54 @@ function PropertiesPanel({
               : "transition-[height] duration-400 ease-[cubic-bezier(0.22,1.15,0.36,1)]"
           }`}
           style={{ height: `${bottomSheet.height}px` }}
-          aria-label="Selected object properties"
+          aria-label="Mobile layers and properties"
           data-snap={bottomSheet.snap}
           data-dragging={bottomSheet.isDragging}
         >
           <button
             type="button"
             {...bottomSheet.handleProps}
-            className="flex h-7 w-full shrink-0 touch-none items-center justify-center cursor-grab active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-blue-600"
-            aria-label="Drag properties panel or tap to change its height"
+            className="flex h-6 w-full shrink-0 touch-none items-center justify-center cursor-grab active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-blue-600"
+            aria-label="Drag inspector panel or tap to change its height"
             aria-expanded={bottomSheet.snap !== "collapsed"}
-            aria-controls="mobile-object-properties"
+            aria-controls="mobile-editor-inspector"
           >
             <span className="h-1.5 w-11 rounded-full bg-slate-300 transition-colors dark:bg-slate-600" />
           </button>
 
-          <div className="flex min-h-9 shrink-0 items-start justify-between gap-3 px-5 pb-3">
-            <span className="flex min-w-0 items-center gap-3">
-              <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {selectedObjectLabel}
-              </span>
-            </span>
-            <span className="shrink-0 text-xs font-medium capitalize text-blue-600 dark:text-blue-400">
-              {bottomSheet.snap}
-            </span>
+          <div className="h-10 shrink-0 px-3 pb-1">
+            <InspectorTabs
+              activeTab={mobileTab}
+              onChange={changeMobileTab}
+              labelledBy="Mobile inspector sections"
+            />
           </div>
 
           <div
-            id="mobile-object-properties"
-            className={`min-h-0 flex-1 overscroll-contain overflow-y-auto border-t border-slate-100 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 transition-opacity duration-200 dark:border-slate-800 ${
+            id="mobile-editor-inspector"
+            role="tabpanel"
+            className={`min-h-0 flex-1 border-t border-slate-100 transition-opacity duration-200 dark:border-slate-800 ${
               bottomSheet.snap !== "collapsed" || bottomSheet.isDragging
                 ? "opacity-100"
                 : "pointer-events-none opacity-0"
             }`}
           >
-            <ObjectProperties
-              editorState={editorState}
-              selectedObject={selectedObject}
-              SelectedObjectPanel={MobileSelectedObjectPanel}
-              onObjectChange={onObjectChange}
-              history={history}
-            />
+            {mobileTab === "layers" ? (
+              <LayersPanel
+                canvas={editorState.canvas}
+                selectedObject={selectedObject}
+                onObjectChange={onObjectChange}
+                history={history}
+              />
+            ) : (
+              <PropertiesContent
+                editorState={editorState}
+                selectedObject={selectedObject}
+                SelectedObjectPanel={MobileSelectedObjectPanel}
+                onObjectChange={onObjectChange}
+                history={history}
+              />
+            )}
           </div>
         </aside>
       )}

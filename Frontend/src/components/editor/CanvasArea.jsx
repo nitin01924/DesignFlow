@@ -4,6 +4,7 @@ import EditorToolbar from "./EditorToolbar";
 import MobileObjectToolbar from "./mobile/MobileObjectToolbar";
 import CropActionBar from "./crop/CropActionBar";
 import { useImageCrop } from "./crop/useImageCrop";
+import { initializeLayerObject } from "./layers/layerUtils.js";
 
 const fitImageToCanvas = (image, canvas) => {
   const imageWidth = image.width || 1;
@@ -137,6 +138,11 @@ function CanvasArea({
       syncSelection(event);
     };
 
+    const syncLayerObject = (event) => {
+      initializeLayerObject(fabricCanvas, event.target);
+    };
+
+    fabricCanvas.on("object:added", syncLayerObject);
     fabricCanvas.on("selection:created", syncSelection);
     fabricCanvas.on("selection:updated", syncSelection);
     fabricCanvas.on("selection:cleared", syncSelection);
@@ -186,6 +192,7 @@ function CanvasArea({
 
     return () => {
       resizeObserver.disconnect();
+      fabricCanvas.off("object:added", syncLayerObject);
       fabricCanvas.off("selection:created", syncSelection);
       fabricCanvas.off("selection:updated", syncSelection);
       fabricCanvas.off("selection:cleared", syncSelection);
@@ -222,6 +229,7 @@ function CanvasArea({
           const scaleY = targetHeight / sourceHeight;
 
           fabricCanvas.getObjects().forEach((object) => {
+            initializeLayerObject(fabricCanvas, object);
             object.set({
               left: (object.left || 0) * scaleX,
               top: (object.top || 0) * scaleY,

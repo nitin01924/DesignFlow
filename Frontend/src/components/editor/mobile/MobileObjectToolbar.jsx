@@ -1,27 +1,11 @@
+import { deleteLayers, duplicateLayer } from "../layers/layerCommands.js";
+
 const actions = [
   {
     label: "Duplicate",
     icon: "M8 8h11v11H8zM5 16H4V4h12v1",
     async run(canvas, object, finish) {
-      const clone = await object.clone();
-      clone.set({
-        left: (object.left || 0) + 16,
-        top: (object.top || 0) + 16,
-        historyId: undefined,
-        aspectRatioLocked: object.aspectRatioLocked,
-        lockedAspectRatio: object.lockedAspectRatio,
-      });
-      if (object.type === "image") {
-        const locked = Boolean(object.aspectRatioLocked);
-        clone.setControlsVisibility({
-          mt: !locked,
-          mb: !locked,
-          ml: !locked,
-          mr: !locked,
-        });
-      }
-      canvas.add(clone);
-      canvas.setActiveObject(clone);
+      const clone = await duplicateLayer(canvas, object, 16);
       finish(clone);
     },
   },
@@ -39,8 +23,7 @@ const actions = [
     destructive: true,
     run(canvas, object, finish) {
       const activeObjects = canvas.getActiveObjects();
-      canvas.discardActiveObject();
-      canvas.remove(...activeObjects);
+      deleteLayers(canvas, activeObjects);
       finish(null);
     },
   },
@@ -78,6 +61,7 @@ function MobileObjectToolbar({
       () => action.run(canvas, selectedObject, finish),
     );
   const isHistoryUnavailable = !history.isReady || history.isRestoring;
+  const isLayerLocked = Boolean(selectedObject.layerLocked);
 
   return (
     <div
@@ -90,7 +74,7 @@ function MobileObjectToolbar({
           <button
             type="button"
             onClick={() => onCrop?.(selectedObject)}
-            disabled={isHistoryUnavailable}
+            disabled={isHistoryUnavailable || isLayerLocked}
             className="flex min-w-16 flex-col items-center gap-1 rounded-xl px-3 py-2 text-[11px] font-medium text-slate-700 active:bg-slate-100 disabled:opacity-35 dark:text-slate-200 dark:active:bg-slate-800"
           >
             <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
@@ -104,7 +88,7 @@ function MobileObjectToolbar({
             key={action.label}
             type="button"
             onClick={() => runAction(action)}
-            disabled={isHistoryUnavailable}
+            disabled={isHistoryUnavailable || isLayerLocked}
             className={`flex min-w-16 flex-col items-center gap-1 rounded-xl px-3 py-2 text-[11px] font-medium active:bg-slate-100 disabled:opacity-35 dark:active:bg-slate-800 ${
               action.destructive
                 ? "text-red-600 dark:text-red-400"

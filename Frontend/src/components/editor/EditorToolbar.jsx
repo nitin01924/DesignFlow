@@ -1,3 +1,10 @@
+import {
+  deleteLayers,
+  duplicateLayer,
+  moveLayerBy,
+  setLayerLocked,
+} from "./layers/layerCommands.js";
+
 const iconPaths = {
   delete: "M5 7h14M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5",
   duplicate: "M8 8h11v11H8zM5 16H4V4h12v1",
@@ -50,9 +57,7 @@ function EditorToolbar({
   const hasSelection = Boolean(
     canvas && selectedObject && history.isReady && !history.isRestoring,
   );
-  const isMovementLocked = Boolean(
-    selectedObject?.lockMovementX && selectedObject?.lockMovementY,
-  );
+  const isLayerLocked = Boolean(selectedObject?.layerLocked);
 
   const finishAction = (object = selectedObject) => {
     object?.setCoords();
@@ -66,8 +71,7 @@ function EditorToolbar({
       () => {
         // getActiveObjects also handles a multi-object ActiveSelection correctly.
         const objects = canvas.getActiveObjects();
-        canvas.discardActiveObject();
-        canvas.remove(...objects);
+        deleteLayers(canvas, objects);
         finishAction(null);
       },
     );
@@ -76,26 +80,7 @@ function EditorToolbar({
     history.execute(
       { type: "duplicate-object", label: "Duplicate object" },
       async () => {
-        // Fabric 7 clone() is asynchronous because some objects may contain images.
-        const clone = await selectedObject.clone();
-        clone.set({
-          left: (selectedObject.left || 0) + 20,
-          top: (selectedObject.top || 0) + 20,
-          historyId: undefined,
-          aspectRatioLocked: selectedObject.aspectRatioLocked,
-          lockedAspectRatio: selectedObject.lockedAspectRatio,
-        });
-        if (selectedObject.type === "image") {
-          const locked = Boolean(selectedObject.aspectRatioLocked);
-          clone.setControlsVisibility({
-            mt: !locked,
-            mb: !locked,
-            ml: !locked,
-            mr: !locked,
-          });
-        }
-        canvas.add(clone);
-        canvas.setActiveObject(clone);
+        const clone = await duplicateLayer(canvas, selectedObject);
         finishAction(clone);
       },
     );
@@ -110,17 +95,14 @@ function EditorToolbar({
       },
     );
 
-  const toggleMovementLock = () =>
+  const toggleLayerLock = () =>
     history.execute(
       {
-        type: isMovementLocked ? "unlock-object" : "lock-object",
-        label: isMovementLocked ? "Unlock object" : "Lock object",
+        type: isLayerLocked ? "unlock-object" : "lock-object",
+        label: isLayerLocked ? "Unlock object" : "Lock object",
       },
       () => {
-        selectedObject.set({
-          lockMovementX: !isMovementLocked,
-          lockMovementY: !isMovementLocked,
-        });
+        setLayerLocked(canvas, selectedObject, !isLayerLocked);
         finishAction();
       },
     );
@@ -132,11 +114,7 @@ function EditorToolbar({
         label: direction === "forward" ? "Bring object forward" : "Send object backward",
       },
       () => {
-        if (direction === "forward") {
-          canvas.bringObjectForward(selectedObject);
-        } else {
-          canvas.sendObjectBackwards(selectedObject);
-        }
+        moveLayerBy(canvas, selectedObject, direction);
         finishAction();
       },
     );
@@ -144,21 +122,21 @@ function EditorToolbar({
   // New commands can be appended here without changing the toolbar markup.
   const actions = [
     ...(selectedObject?.type === "image"
-      ? [{ label: "Crop image", shortLabel: "Crop", icon: "crop", run: () => onCrop?.(selectedObject) }]
+      ? [{ label: "Crop image", shortLabel: "Crop", icon: "crop", disabled: isLayerLocked, run: () => onCrop?.(selectedObject) }]
       : []),
-    { label: "Duplicate selected object", shortLabel: "Duplicate", icon: "duplicate", run: duplicateSelection },
-    { label: "Rotate left 90 degrees", shortLabel: "Rotate left", icon: "rotateLeft", run: () => rotate(-90) },
-    { label: "Rotate right 90 degrees", shortLabel: "Rotate right", icon: "rotateRight", run: () => rotate(90) },
-    { label: "Bring forward", icon: "forward", run: () => changeLayerOrder("forward") },
-    { label: "Send backward", icon: "backward", run: () => changeLayerOrder("backward") },
+    { label: "Duplicate selected object", shortLabel: "Duplicate", icon: "duplicate", disabled: isLayerLocked, run: duplicateSelection },
+    { label: "Rotate left 90 degrees", shortLabel: "Rotate left", icon: "rotateLeft", disabled: isLayerLocked, run: () => rotate(-90) },
+    { label: "Rotate right 90 degrees", shortLabel: "Rotate right", icon: "rotateRight", disabled: isLayerLocked, run: () => rotate(90) },
+    { label: "Bring forward", icon: "forward", disabled: isLayerLocked, run: () => changeLayerOrder("forward") },
+    { label: "Send backward", icon: "backward", disabled: isLayerLocked, run: () => changeLayerOrder("backward") },
     {
-      label: isMovementLocked ? "Unlock object movement" : "Lock object movement",
-      shortLabel: isMovementLocked ? "Unlock" : "Lock",
-      icon: isMovementLocked ? "unlock" : "lock",
-      pressed: isMovementLocked,
-      run: toggleMovementLock,
+      label: isLayerLocked ? "Unlock object" : "Lock object",
+      shortLabel: isLayerLocked ? "Unlock" : "Lock",
+      icon: isLayerLocked ? "unlock" : "lock",
+      pressed: isLayerLocked,
+      run: toggleLayerLock,
     },
-    { label: "Delete selected object", shortLabel: "Delete", icon: "delete", run: deleteSelection },
+    { label: "Delete selected object", shortLabel: "Delete", icon: "delete", disabled: isLayerLocked, run: deleteSelection },
   ];
 
   return (
@@ -170,7 +148,7 @@ function EditorToolbar({
       {actions.map((action) => (
         <ToolbarButton
           key={action.label}
-          action={{ ...action, disabled: !hasSelection }}
+          action={{ ...action, disabled: !hasSelection || action.disabled }}
           onClick={action.run}
         />
       ))}

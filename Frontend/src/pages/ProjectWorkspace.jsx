@@ -213,7 +213,6 @@ function ProjectWorkspace({ user }) {
                 history={history}
               />
               <PropertiesPanel
-                project={project}
                 editorState={editorState}
                 onObjectChange={handleObjectChange}
                 isEditingDisabled={isEditorBusy}
