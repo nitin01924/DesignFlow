@@ -44,59 +44,83 @@ export const getExpandedImageCenter = (image, sourceWidth, sourceHeight) => {
   return visibleCenter.add(sourceOffset);
 };
 
-export const createCropConstraints = (
+// Crop controls operate in the image's rotated coordinate space. Clamping the
+// dragged dimension and then restoring Fabric's fixed transform origin keeps
+// the opposite edge pixel-perfect instead of recentring the whole frame.
+export const constrainCropFrameToImage = (
+  frame,
+  image,
+  sourceWidth,
+  sourceHeight,
+  transform,
+  { minimumSize = 48 } = {},
+) => {
+  const corner = transform?.corner;
+  if (!corner) return frame;
+
+  const corners = ["tl", "tr", "br", "bl"];
+  const changesWidth =
+    corner === "ml" || corner === "mr" || corners.includes(corner);
+  const changesHeight =
+    corner === "mt" || corner === "mb" || corners.includes(corner);
+  const originX =
+    transform.originX || (corner.includes("l") ? "right" : "left");
+  const originY =
+    transform.originY || (corner.includes("t") ? "bottom" : "top");
+  const fixedPoint = frame.getPointByOrigin(originX, originY);
+  const imageCenter = image.getCenterPoint();
+  const fixedLocal = rotateVector(
+    fixedPoint.x - imageCenter.x,
+    fixedPoint.y - imageCenter.y,
+    -(image.angle || 0),
+  );
+  const halfImageWidth = (sourceWidth * Math.abs(image.scaleX || 1)) / 2;
+  const halfImageHeight = (sourceHeight * Math.abs(image.scaleY || 1)) / 2;
+
+  if (changesWidth) {
+    const maximumWidth =
+      originX === "right"
+        ? fixedLocal.x + halfImageWidth
+        : halfImageWidth - fixedLocal.x;
+    const maximumScaleX = Math.max(1, maximumWidth) / Math.max(1, frame.width);
+    const minimumScaleX =
+      Math.min(minimumSize, Math.max(1, maximumWidth)) /
+      Math.max(1, frame.width);
+    frame.set(
+      "scaleX",
+      clamp(Math.abs(frame.scaleX || 1), minimumScaleX, maximumScaleX),
+    );
+  }
+
+  if (changesHeight) {
+    const maximumHeight =
+      originY === "bottom"
+        ? fixedLocal.y + halfImageHeight
+        : halfImageHeight - fixedLocal.y;
+    const maximumScaleY =
+      Math.max(1, maximumHeight) / Math.max(1, frame.height);
+    const minimumScaleY =
+      Math.min(minimumSize, Math.max(1, maximumHeight)) /
+      Math.max(1, frame.height);
+    frame.set(
+      "scaleY",
+      clamp(Math.abs(frame.scaleY || 1), minimumScaleY, maximumScaleY),
+    );
+  }
+
+  frame.setPositionByOrigin(fixedPoint, originX, originY);
+  frame.setCoords();
+  return frame;
+};
+
+// Panning is constrained without ever changing image scale. Resizing the crop
+// frame and resizing the image are intentionally separate editor operations.
+export const constrainImagePosition = (
   image,
   frame,
   sourceWidth,
   sourceHeight,
 ) => {
-  const baseScaleX = Math.max(MINIMUM_SCALE, Math.abs(image.scaleX || 1));
-  const baseScaleY = Math.max(MINIMUM_SCALE, Math.abs(image.scaleY || 1));
-  const scaledFrameWidth = frame.width * Math.abs(frame.scaleX || 1);
-  const scaledFrameHeight = frame.height * Math.abs(frame.scaleY || 1);
-  const minimumZoom = Math.max(
-    scaledFrameWidth / Math.max(1, sourceWidth * baseScaleX),
-    scaledFrameHeight / Math.max(1, sourceHeight * baseScaleY),
-  );
-
-  return {
-    sourceWidth,
-    sourceHeight,
-    baseScaleX,
-    baseScaleY,
-    minimumZoom,
-    maximumZoom: Math.max(1, minimumZoom) * 32,
-    scaleSignX: (image.scaleX || 1) < 0 ? -1 : 1,
-    scaleSignY: (image.scaleY || 1) < 0 ? -1 : 1,
-  };
-};
-
-export const constrainCropTransform = (image, frame, constraints) => {
-  const {
-    sourceWidth,
-    sourceHeight,
-    baseScaleX,
-    baseScaleY,
-    minimumZoom,
-    maximumZoom,
-    scaleSignX,
-    scaleSignY,
-  } = constraints;
-  const zoom = clamp(
-    Math.max(
-      Math.abs(image.scaleX || 0) / baseScaleX,
-      Math.abs(image.scaleY || 0) / baseScaleY,
-      minimumZoom,
-    ),
-    minimumZoom,
-    maximumZoom,
-  );
-
-  image.set({
-    scaleX: scaleSignX * baseScaleX * zoom,
-    scaleY: scaleSignY * baseScaleY * zoom,
-  });
-
   const frameCenter = frame.getCenterPoint();
   const imageCenter = image.getCenterPoint();
   const angle = frame.angle || 0;
@@ -107,13 +131,13 @@ export const constrainCropTransform = (image, frame, constraints) => {
   );
   const maximumOffsetX = Math.max(
     0,
-    (sourceWidth * Math.abs(image.scaleX) -
+    (sourceWidth * Math.abs(image.scaleX || 1) -
       frame.width * Math.abs(frame.scaleX || 1)) /
       2,
   );
   const maximumOffsetY = Math.max(
     0,
-    (sourceHeight * Math.abs(image.scaleY) -
+    (sourceHeight * Math.abs(image.scaleY || 1) -
       frame.height * Math.abs(frame.scaleY || 1)) /
       2,
   );
@@ -128,39 +152,10 @@ export const constrainCropTransform = (image, frame, constraints) => {
   image.setCoords();
 
   return {
-    zoom,
     center: nextCenter,
     constrainedX: Math.abs(localOffset.x) > maximumOffsetX,
     constrainedY: Math.abs(localOffset.y) > maximumOffsetY,
   };
-};
-
-export const zoomImageAroundPoint = (image, factor, anchor) => {
-  const center = image.getCenterPoint();
-  image.set({
-    scaleX: image.scaleX * factor,
-    scaleY: image.scaleY * factor,
-  });
-  image.setPositionByOrigin(
-    new Point(
-      anchor.x - (anchor.x - center.x) * factor,
-      anchor.y - (anchor.y - center.y) * factor,
-    ),
-    "center",
-    "center",
-  );
-};
-
-export const isPointInsideCropFrame = (point, frame) => {
-  const localPoint = util.transformPoint(
-    point,
-    util.invertTransform(frame.calcTransformMatrix()),
-  );
-
-  return (
-    Math.abs(localPoint.x) <= frame.width / 2 &&
-    Math.abs(localPoint.y) <= frame.height / 2
-  );
 };
 
 export const calculateCropResult = (

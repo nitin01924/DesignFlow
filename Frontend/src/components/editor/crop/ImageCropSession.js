@@ -1,15 +1,12 @@
-import { Line, Point, Rect, util } from "fabric";
+import { Point, util } from "fabric";
 import {
   calculateCropResult,
-  clamp,
-  constrainCropTransform,
-  createCropConstraints,
+  constrainImagePosition,
   getExpandedImageCenter,
   getSourceDimensions,
-  isPointInsideCropFrame,
   rotateVector,
-  zoomImageAroundPoint,
 } from "./cropGeometry.js";
+import { ResizableCropViewport } from "./ResizableCropViewport.js";
 
 const CROP_STATE_FIELDS = [
   "left",
@@ -40,22 +37,8 @@ const IMAGE_INTERACTION_FIELDS = [
   "hasControls",
   "hoverCursor",
   "moveCursor",
-  "cornerColor",
-  "cornerStrokeColor",
-  "cornerStyle",
-  "cornerSize",
-  "touchCornerSize",
-  "transparentCorners",
-  "borderColor",
-  "padding",
   "objectCaching",
 ];
-
-const HELPER_PROPERTIES = {
-  selectable: false,
-  evented: false,
-  excludeFromExport: true,
-};
 
 const copyFields = (object, fields) =>
   Object.fromEntries(fields.map((field) => [field, object[field]]));
@@ -82,49 +65,9 @@ const restoreControlVisibility = (image, visibility) => {
   }
 };
 
-const copyFrameGeometry = (target, frame) => {
-  target.set({
-    left: frame.left,
-    top: frame.top,
-    width: frame.width,
-    height: frame.height,
-    scaleX: frame.scaleX,
-    scaleY: frame.scaleY,
-    angle: frame.angle,
-    originX: frame.originX,
-    originY: frame.originY,
-    rx: frame.rx,
-    ry: frame.ry,
-  });
-  target.setCoords();
-};
-
-const touchDistance = (touches) =>
-  Math.hypot(
-    touches[0].clientX - touches[1].clientX,
-    touches[0].clientY - touches[1].clientY,
-  );
-
-const touchMidpoint = (canvas, touches) => {
-  const bounds = canvas.upperCanvasEl.getBoundingClientRect();
-  const viewportPoint = new Point(
-    (((touches[0].clientX + touches[1].clientX) / 2 - bounds.left) *
-      canvas.getWidth()) /
-      Math.max(1, bounds.width),
-    (((touches[0].clientY + touches[1].clientY) / 2 - bounds.top) *
-      canvas.getHeight()) /
-      Math.max(1, bounds.height),
-  );
-
-  return util.transformPoint(
-    viewportPoint,
-    util.invertTransform(canvas.viewportTransform),
-  );
-};
-
-// A crop session owns all temporary Fabric state and high-frequency input.
-// React only starts/finishes the session, keeping pointer frames off the
-// component render path and guaranteeing a single history commit on Done.
+// The viewport and the source image are independent edit targets. Fabric owns
+// frame handles while the session only pans the fixed-scale image beneath it.
+// High-frequency input stays outside React and history commits only on Done.
 export class ImageCropSession {
   constructor({ canvas, image, onFinish }) {
     this.canvas = canvas;
@@ -132,40 +75,37 @@ export class ImageCropSession {
     this.onFinish = onFinish;
     this.active = false;
     this.finishing = false;
-    this.pinch = null;
+    this.manualPan = null;
     this.decorationProgress = 0;
     this.decorationAnimation = null;
     this.resetAnimation = null;
+    this.resetTarget = null;
     this.momentumFrame = null;
     this.lastInputWasTouch = false;
     this.lastDragSample = null;
     this.dragVelocity = new Point(0, 0);
 
-    this.handleTransform = this.handleTransform.bind(this);
+    this.handleFrameTransform = this.handleFrameTransform.bind(this);
     this.handleSelectionCleared = this.handleSelectionCleared.bind(this);
     this.handleDoubleClick = this.handleDoubleClick.bind(this);
-    this.handleWheel = this.handleWheel.bind(this);
     this.handlePointerDown = this.handlePointerDown.bind(this);
+    this.handlePointerMove = this.handlePointerMove.bind(this);
     this.handlePointerUp = this.handlePointerUp.bind(this);
     this.handleCanvasResize = this.handleCanvasResize.bind(this);
-    this.handleTouchStart = this.handleTouchStart.bind(this);
-    this.handleTouchMove = this.handleTouchMove.bind(this);
-    this.handleTouchEnd = this.handleTouchEnd.bind(this);
   }
 
   start() {
     if (this.active) return false;
-
     this.snapshot = captureCropState(this.image);
-    const sourceDimensions = getSourceDimensions(this.image);
-    this.sourceWidth = sourceDimensions.width;
-    this.sourceHeight = sourceDimensions.height;
-    const visibleCenter = this.image.getCenterPoint();
+    const { width, height } = getSourceDimensions(this.image);
+    this.sourceWidth = width;
+    this.sourceHeight = height;
     const expandedCenter = getExpandedImageCenter(
       this.image,
       this.sourceWidth,
       this.sourceHeight,
     );
+    this.initialExpandedCenter = expandedCenter;
 
     this.objectInteraction = this.canvas.getObjects().map((object) => ({
       object,
@@ -184,18 +124,21 @@ export class ImageCropSession {
       skipTargetFind: this.canvas.skipTargetFind,
       preserveObjectStacking: this.canvas.preserveObjectStacking,
       uniformScaling: this.canvas.uniformScaling,
+      centeredScaling: this.canvas.centeredScaling,
+      centeredKey: this.canvas.centeredKey,
       controlsAboveOverlay: this.canvas.controlsAboveOverlay,
       defaultCursor: this.canvas.defaultCursor,
       allowTouchScrolling: this.canvas.allowTouchScrolling,
     };
-
     this.objectInteraction.forEach(({ object }) => {
-      if (object !== this.image) {
-        object.set({ selectable: false, evented: false });
-      }
+      object.set({ selectable: false, evented: false });
     });
 
-    this.createViewport(visibleCenter);
+    this.viewport = new ResizableCropViewport({
+      canvas: this.canvas,
+      image: this.image,
+    });
+    this.initialFrameGeometry = this.viewport.captureGeometry();
     this.image.set({
       left: expandedCenter.x,
       top: expandedCenter.y,
@@ -206,38 +149,13 @@ export class ImageCropSession {
       cropX: 0,
       cropY: 0,
       cropModeActive: true,
-      clipPath: this.clipFrame,
-      selectable: true,
-      evented: true,
+      clipPath: this.viewport.clipFrame,
+      selectable: false,
+      evented: false,
       hasBorders: false,
-      hasControls: true,
-      lockMovementX: false,
-      lockMovementY: false,
-      lockScalingX: false,
-      lockScalingY: false,
-      lockScalingFlip: true,
+      hasControls: false,
       lockRotation: true,
-      hoverCursor: "grab",
-      moveCursor: "grabbing",
-      cornerColor: "#ffffff",
-      cornerStrokeColor: "#2563eb",
-      cornerStyle: "circle",
-      cornerSize: 14,
-      touchCornerSize: 44,
-      transparentCorners: false,
-      padding: 0,
       objectCaching: true,
-    });
-    this.image.setControlsVisibility({
-      tl: true,
-      tr: true,
-      br: true,
-      bl: true,
-      mt: false,
-      mb: false,
-      ml: false,
-      mr: false,
-      mtr: false,
     });
     this.image.setCoords();
 
@@ -245,204 +163,141 @@ export class ImageCropSession {
       selection: false,
       skipTargetFind: false,
       preserveObjectStacking: true,
-      uniformScaling: true,
+      uniformScaling: false,
+      centeredScaling: false,
+      centeredKey: null,
       controlsAboveOverlay: true,
       defaultCursor: "default",
       allowTouchScrolling: false,
     });
-    this.canvas.add(...this.helpers);
-    this.constraints = createCropConstraints(
-      this.image,
-      this.frame,
-      this.sourceWidth,
-      this.sourceHeight,
-    );
+    this.viewport.add();
     this.active = true;
-    this.positionDecorations();
-    this.constrain();
+    this.constrainImage();
     this.bindInput();
-    this.canvas.setActiveObject(this.image);
+    this.viewport.activate();
     this.canvas.requestRenderAll();
     this.animateDecorations(1);
     return true;
   }
 
-  createViewport(center) {
-    const frameScaleX = Math.abs(this.image.scaleX || 1);
-    const frameScaleY = Math.abs(this.image.scaleY || 1);
-    const rx = Math.min(this.image.width / 2, 12 / frameScaleX);
-    const ry = Math.min(this.image.height / 2, 12 / frameScaleY);
-    const frameGeometry = {
-      left: center.x,
-      top: center.y,
-      originX: "center",
-      originY: "center",
-      width: this.image.width,
-      height: this.image.height,
-      scaleX: frameScaleX,
-      scaleY: frameScaleY,
-      angle: this.image.angle || 0,
-      rx,
-      ry,
-    };
-
-    this.frame = new Rect({
-      ...HELPER_PROPERTIES,
-      ...frameGeometry,
-      fill: "transparent",
-      stroke: "rgba(255,255,255,0.96)",
-      strokeWidth: 2,
-      strokeUniform: true,
-      opacity: 0,
-      cropHelperType: "frame",
-    });
-    this.frameHalo = new Rect({
-      ...HELPER_PROPERTIES,
-      ...frameGeometry,
-      fill: "transparent",
-      stroke: "rgba(2,6,23,0.62)",
-      strokeWidth: 6,
-      strokeUniform: true,
-      opacity: 0,
-      cropHelperType: "frame-halo",
-    });
-    this.hole = new Rect({
-      ...HELPER_PROPERTIES,
-      ...frameGeometry,
-      absolutePositioned: true,
-      inverted: true,
-      fill: "#000000",
-      cropHelperType: "hole",
-    });
-    this.clipFrame = new Rect({
-      ...HELPER_PROPERTIES,
-      ...frameGeometry,
-      absolutePositioned: true,
-      fill: "#000000",
-      cropHelperType: "clip",
-    });
-    this.overlay = new Rect({
-      ...HELPER_PROPERTIES,
-      left: 0,
-      top: 0,
-      width: this.canvas.getWidth(),
-      height: this.canvas.getHeight(),
-      fill: "rgba(2,6,23,0.68)",
-      opacity: 0,
-      cropHelperType: "overlay",
-      clipPath: this.hole,
-    });
-    this.gridLines = Array.from({ length: 4 }, () =>
-      new Line([0, 0, 0, 0], {
-        ...HELPER_PROPERTIES,
-        stroke: "rgba(255,255,255,0.78)",
-        strokeWidth: 1,
-        strokeUniform: true,
-        opacity: 0,
-        cropHelperType: "grid",
-      }),
-    );
-    this.helpers = [
-      this.overlay,
-      this.frameHalo,
-      ...this.gridLines,
-      this.frame,
-    ];
-  }
-
-  positionDecorations() {
-    copyFrameGeometry(this.frameHalo, this.frame);
-    copyFrameGeometry(this.hole, this.frame);
-    copyFrameGeometry(this.clipFrame, this.frame);
-
-    const matrix = this.frame.calcTransformMatrix();
-    const halfWidth = this.frame.width / 2;
-    const halfHeight = this.frame.height / 2;
-    const definitions = [
-      [new Point(-halfWidth / 3, -halfHeight), new Point(-halfWidth / 3, halfHeight)],
-      [new Point(halfWidth / 3, -halfHeight), new Point(halfWidth / 3, halfHeight)],
-      [new Point(-halfWidth, -halfHeight / 3), new Point(halfWidth, -halfHeight / 3)],
-      [new Point(-halfWidth, halfHeight / 3), new Point(halfWidth, halfHeight / 3)],
-    ];
-
-    definitions.forEach(([start, end], index) => {
-      const worldStart = util.transformPoint(start, matrix);
-      const worldEnd = util.transformPoint(end, matrix);
-      this.gridLines[index].set({
-        x1: worldStart.x,
-        y1: worldStart.y,
-        x2: worldEnd.x,
-        y2: worldEnd.y,
-      });
-      this.gridLines[index].setCoords();
-    });
-  }
-
   bindInput() {
-    this.canvas.on("object:moving", this.handleTransform);
-    this.canvas.on("object:scaling", this.handleTransform);
-    this.canvas.on("object:modified", this.handleTransform);
+    this.canvas.on("object:scaling", this.handleFrameTransform);
+    this.canvas.on("object:modified", this.handleFrameTransform);
     this.canvas.on("selection:cleared", this.handleSelectionCleared);
     this.canvas.on("mouse:dblclick", this.handleDoubleClick);
-    this.canvas.on("mouse:wheel", this.handleWheel);
     this.canvas.on("mouse:down", this.handlePointerDown);
+    this.canvas.on("mouse:move", this.handlePointerMove);
     this.canvas.on("mouse:up", this.handlePointerUp);
     this.canvas.on("designflow:canvas-resized", this.handleCanvasResize);
-    this.canvas.upperCanvasEl.addEventListener(
-      "touchstart",
-      this.handleTouchStart,
-      { passive: false },
-    );
-    document.addEventListener("touchmove", this.handleTouchMove, {
-      capture: true,
-      passive: false,
-    });
-    document.addEventListener("touchend", this.handleTouchEnd, {
-      capture: true,
-      passive: false,
-    });
-    document.addEventListener("touchcancel", this.handleTouchEnd, {
-      capture: true,
-      passive: false,
-    });
   }
 
   unbindInput() {
-    this.canvas.off("object:moving", this.handleTransform);
-    this.canvas.off("object:scaling", this.handleTransform);
-    this.canvas.off("object:modified", this.handleTransform);
+    this.canvas.off("object:scaling", this.handleFrameTransform);
+    this.canvas.off("object:modified", this.handleFrameTransform);
     this.canvas.off("selection:cleared", this.handleSelectionCleared);
     this.canvas.off("mouse:dblclick", this.handleDoubleClick);
-    this.canvas.off("mouse:wheel", this.handleWheel);
     this.canvas.off("mouse:down", this.handlePointerDown);
+    this.canvas.off("mouse:move", this.handlePointerMove);
     this.canvas.off("mouse:up", this.handlePointerUp);
     this.canvas.off("designflow:canvas-resized", this.handleCanvasResize);
-    this.canvas.upperCanvasEl.removeEventListener(
-      "touchstart",
-      this.handleTouchStart,
+  }
+
+  constrainImage() {
+    return constrainImagePosition(
+      this.image,
+      this.viewport.frame,
+      this.sourceWidth,
+      this.sourceHeight,
     );
-    document.removeEventListener("touchmove", this.handleTouchMove, {
-      capture: true,
-    });
-    document.removeEventListener("touchend", this.handleTouchEnd, {
-      capture: true,
-    });
-    document.removeEventListener("touchcancel", this.handleTouchEnd, {
-      capture: true,
-    });
   }
 
-  constrain() {
-    return constrainCropTransform(this.image, this.frame, this.constraints);
-  }
-
-  handleTransform(event) {
-    if (!this.active || this.finishing || event.target !== this.image) return;
-    const result = this.constrain();
-    if (event.transform?.action === "drag" || event.e?.type?.includes("move")) {
-      this.captureDragVelocity(event.e, result.center);
+  handleFrameTransform(event) {
+    if (
+      !this.active ||
+      this.finishing ||
+      event.target !== this.viewport.frame
+    ) {
+      return;
     }
+    this.cancelMomentum();
+    this.cancelResetAnimation();
+    this.viewport.constrain(
+      this.image,
+      this.sourceWidth,
+      this.sourceHeight,
+      event.transform,
+    );
+    this.constrainImage();
     this.canvas.requestRenderAll();
+  }
+
+  handleSelectionCleared() {
+    if (!this.active || this.finishing) return;
+    queueMicrotask(() => {
+      if (!this.active || this.finishing) return;
+      this.viewport.activate();
+      this.canvas.requestRenderAll();
+    });
+  }
+
+  handleDoubleClick(event) {
+    if (event.target !== this.viewport.frame) return;
+    event.e?.preventDefault?.();
+    this.done();
+  }
+
+  handlePointerDown(event) {
+    if (!this.active || this.finishing) return;
+    this.cancelMomentum();
+    this.cancelResetAnimation();
+    this.lastInputWasTouch = isTouchInput(event.e);
+    this.lastDragSample = null;
+    this.dragVelocity = new Point(0, 0);
+
+    if (
+      event.target === this.viewport.frame &&
+      !event.transform?.corner
+    ) {
+      this.manualPan = {
+        pointer: event.scenePoint,
+        imageCenter: this.image.getCenterPoint(),
+      };
+      event.e?.preventDefault?.();
+    }
+  }
+
+  handlePointerMove(event) {
+    if (!this.active || this.finishing || !this.manualPan) return;
+    event.e?.preventDefault?.();
+    const pointer = event.scenePoint;
+    this.image.setPositionByOrigin(
+      new Point(
+        this.manualPan.imageCenter.x +
+          pointer.x -
+          this.manualPan.pointer.x,
+        this.manualPan.imageCenter.y +
+          pointer.y -
+          this.manualPan.pointer.y,
+      ),
+      "center",
+      "center",
+    );
+    const result = this.constrainImage();
+    this.captureDragVelocity(event.e, result.center);
+    this.canvas.requestRenderAll();
+  }
+
+  handlePointerUp() {
+    if (!this.manualPan) return;
+    this.manualPan = null;
+    if (
+      !this.lastInputWasTouch ||
+      !this.lastDragSample ||
+      window.performance.now() - this.lastDragSample.time > 90
+    ) {
+      return;
+    }
+    this.startMomentum();
   }
 
   captureDragVelocity(event, center) {
@@ -450,7 +305,6 @@ export class ImageCropSession {
     this.lastInputWasTouch = true;
     const now = window.performance.now();
     const previous = this.lastDragSample;
-
     if (previous) {
       const elapsed = now - previous.time;
       if (elapsed > 0 && elapsed < 80) {
@@ -465,60 +319,6 @@ export class ImageCropSession {
       }
     }
     this.lastDragSample = { center, time: now };
-  }
-
-  handleSelectionCleared() {
-    if (!this.active || this.finishing) return;
-    queueMicrotask(() => {
-      if (!this.active || this.finishing) return;
-      this.canvas.setActiveObject(this.image);
-      this.canvas.requestRenderAll();
-    });
-  }
-
-  handleDoubleClick(event) {
-    if (event.target !== this.image) return;
-    event.e?.preventDefault?.();
-    this.done();
-  }
-
-  handleWheel(event) {
-    if (!this.active || this.finishing) return;
-    const nativeEvent = event.e;
-    nativeEvent?.preventDefault?.();
-    nativeEvent?.stopPropagation?.();
-    this.cancelMomentum();
-    this.cancelResetAnimation();
-
-    const delta = clamp(nativeEvent?.deltaY || 0, -240, 240);
-    const factor = Math.exp(-delta * 0.0022);
-    const scenePoint = event.scenePoint || this.frame.getCenterPoint();
-    const anchor = isPointInsideCropFrame(scenePoint, this.frame)
-      ? scenePoint
-      : this.frame.getCenterPoint();
-    zoomImageAroundPoint(this.image, factor, anchor);
-    this.constrain();
-    this.canvas.requestRenderAll();
-  }
-
-  handlePointerDown(event) {
-    this.cancelMomentum();
-    this.cancelResetAnimation();
-    this.lastInputWasTouch = isTouchInput(event.e);
-    this.lastDragSample = null;
-    this.dragVelocity = new Point(0, 0);
-  }
-
-  handlePointerUp() {
-    if (
-      !this.lastInputWasTouch ||
-      this.pinch ||
-      !this.lastDragSample ||
-      window.performance.now() - this.lastDragSample.time > 90
-    ) {
-      return;
-    }
-    this.startMomentum();
   }
 
   startMomentum() {
@@ -540,18 +340,18 @@ export class ImageCropSession {
         "center",
         "center",
       );
-      const constrained = this.constrain();
+      const constrained = this.constrainImage();
       let localVelocity = rotateVector(
         velocity.x,
         velocity.y,
-        -(this.frame.angle || 0),
+        -(this.viewport.frame.angle || 0),
       );
       if (constrained.constrainedX) localVelocity.x = 0;
       if (constrained.constrainedY) localVelocity.y = 0;
       velocity = rotateVector(
         localVelocity.x,
         localVelocity.y,
-        this.frame.angle || 0,
+        this.viewport.frame.angle || 0,
       );
       const friction = Math.pow(0.9, elapsed / 16.67);
       velocity = new Point(velocity.x * friction, velocity.y * friction);
@@ -563,168 +363,146 @@ export class ImageCropSession {
         this.momentumFrame = null;
       }
     };
-
     this.momentumFrame = window.requestAnimationFrame(tick);
   }
 
   cancelMomentum() {
-    if (this.momentumFrame !== null) {
-      window.cancelAnimationFrame(this.momentumFrame);
-      this.momentumFrame = null;
-    }
-  }
-
-  handleTouchStart(event) {
-    if (!this.active || this.finishing || event.touches.length !== 2) return;
-    event.preventDefault();
-    this.cancelMomentum();
-    this.cancelResetAnimation();
-    if (this.canvas._currentTransform) {
-      this.canvas.endCurrentTransform(event);
-    }
-
-    this.pinch = {
-      distance: Math.max(1, touchDistance(event.touches)),
-      midpoint: touchMidpoint(this.canvas, event.touches),
-      imageCenter: this.image.getCenterPoint(),
-      scaleX: this.image.scaleX,
-      scaleY: this.image.scaleY,
-    };
-  }
-
-  handleTouchMove(event) {
-    if (!this.active || !this.pinch || event.touches.length < 2) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const factor = touchDistance(event.touches) / this.pinch.distance;
-    const midpoint = touchMidpoint(this.canvas, event.touches);
-
-    this.image.set({
-      scaleX: this.pinch.scaleX * factor,
-      scaleY: this.pinch.scaleY * factor,
-    });
-    this.image.setPositionByOrigin(
-      new Point(
-        midpoint.x -
-          (this.pinch.midpoint.x - this.pinch.imageCenter.x) * factor,
-        midpoint.y -
-          (this.pinch.midpoint.y - this.pinch.imageCenter.y) * factor,
-      ),
-      "center",
-      "center",
-    );
-    this.constrain();
-    this.canvas.requestRenderAll();
-  }
-
-  handleTouchEnd(event) {
-    if (!this.pinch || (event.touches?.length || 0) >= 2) return;
-    event.preventDefault();
-    event.stopPropagation();
-    this.pinch = null;
-    this.image.setCoords();
-    this.canvas.fire("object:modified", {
-      target: this.image,
-      transform: { action: "scale" },
-    });
-    this.canvas.requestRenderAll();
+    if (this.momentumFrame === null) return;
+    window.cancelAnimationFrame(this.momentumFrame);
+    this.momentumFrame = null;
   }
 
   handleCanvasResize({ scaleX = 1, scaleY = 1 } = {}) {
     if (!this.active || this.finishing) return;
     const wasResetting = Boolean(this.resetAnimation);
     this.cancelResetAnimation();
-    this.constraints.baseScaleX *= Math.abs(scaleX);
-    this.constraints.baseScaleY *= Math.abs(scaleY);
-    this.overlay.set({
-      left: 0,
-      top: 0,
-      width: this.canvas.getWidth(),
-      height: this.canvas.getHeight(),
-      scaleX: 1,
-      scaleY: 1,
-    });
-    this.positionDecorations();
-    this.constrain();
+    this.initialFrameGeometry = {
+      left: this.initialFrameGeometry.left * scaleX,
+      top: this.initialFrameGeometry.top * scaleY,
+      scaleX: this.initialFrameGeometry.scaleX * Math.abs(scaleX),
+      scaleY: this.initialFrameGeometry.scaleY * Math.abs(scaleY),
+    };
+    this.initialExpandedCenter = new Point(
+      this.initialExpandedCenter.x * scaleX,
+      this.initialExpandedCenter.y * scaleY,
+    );
+    this.snapshot = {
+      ...this.snapshot,
+      left: this.snapshot.left * scaleX,
+      top: this.snapshot.top * scaleY,
+      scaleX: this.snapshot.scaleX * Math.abs(scaleX),
+      scaleY: this.snapshot.scaleY * Math.abs(scaleY),
+    };
+    this.viewport.resizeCanvas();
+    this.constrainImage();
     this.canvas.requestRenderAll();
     if (wasResetting) this.reset();
+  }
+
+  createResetTarget() {
+    return {
+      frame: { ...this.initialFrameGeometry },
+      image: {
+        left: this.initialExpandedCenter.x,
+        top: this.initialExpandedCenter.y,
+      },
+    };
   }
 
   reset() {
     if (!this.active || this.finishing) return;
     this.cancelMomentum();
     this.cancelResetAnimation();
+    this.manualPan = null;
     if (this.canvas._currentTransform) this.canvas.endCurrentTransform();
 
-    const frameCenter = this.frame.getCenterPoint();
-    const target = [
-      frameCenter.x,
-      frameCenter.y,
-      this.constraints.scaleSignX *
-        this.constraints.baseScaleX *
-        this.constraints.minimumZoom,
-      this.constraints.scaleSignY *
-        this.constraints.baseScaleY *
-        this.constraints.minimumZoom,
-    ];
-    this.resetTarget = target;
+    this.resetTarget = this.createResetTarget();
+    const frameStart = this.viewport.captureGeometry();
+    const imageCenter = this.image.getCenterPoint();
     const start = [
-      this.image.getCenterPoint().x,
-      this.image.getCenterPoint().y,
-      this.image.scaleX,
-      this.image.scaleY,
+      frameStart.left,
+      frameStart.top,
+      frameStart.scaleX,
+      frameStart.scaleY,
+      imageCenter.x,
+      imageCenter.y,
     ];
-    const applyValues = ([left, top, scaleX, scaleY]) => {
-      this.image.set({ left, top, scaleX, scaleY });
-      this.constrain();
+    const end = [
+      this.resetTarget.frame.left,
+      this.resetTarget.frame.top,
+      this.resetTarget.frame.scaleX,
+      this.resetTarget.frame.scaleY,
+      this.resetTarget.image.left,
+      this.resetTarget.image.top,
+    ];
+    const applyValues = ([
+      frameLeft,
+      frameTop,
+      frameScaleX,
+      frameScaleY,
+      imageLeft,
+      imageTop,
+    ]) => {
+      this.viewport.applyGeometry({
+        left: frameLeft,
+        top: frameTop,
+        scaleX: frameScaleX,
+        scaleY: frameScaleY,
+      });
+      this.image.set({
+        left: imageLeft,
+        top: imageTop,
+      });
+      this.constrainImage();
       this.canvas.renderAll();
     };
     const complete = () => {
       this.resetAnimation = null;
       this.resetTarget = null;
       if (!this.active || this.finishing) return;
-      this.image.set({ evented: true, hasControls: true });
-      this.canvas.setActiveObject(this.image);
+      this.viewport.setInteractive(true);
+      this.viewport.activate();
       this.canvas.requestRenderAll();
     };
 
-    this.image.set({ evented: false, hasControls: false });
+    this.viewport.setInteractive(false);
     if (prefersReducedMotion()) {
-      applyValues(target);
+      applyValues(end);
       complete();
       return;
     }
     this.resetAnimation = util.animate({
       startValue: start,
-      endValue: target,
+      endValue: end,
       duration: 220,
-      target: this.image,
+      target: this.viewport.frame,
       onChange: applyValues,
       onComplete: complete,
     });
+  }
+
+  applyResetTarget() {
+    if (!this.resetTarget) return;
+    this.viewport.applyGeometry(this.resetTarget.frame);
+    this.image.set(this.resetTarget.image);
+    this.constrainImage();
   }
 
   cancelResetAnimation(complete = false) {
     if (!this.resetAnimation) return;
     this.resetAnimation.abort();
     this.resetAnimation = null;
-    if (complete && this.resetTarget) {
-      const [left, top, scaleX, scaleY] = this.resetTarget;
-      this.image.set({ left, top, scaleX, scaleY });
-      this.constrain();
-    }
+    if (complete) this.applyResetTarget();
     this.resetTarget = null;
     if (this.active && !this.finishing) {
-      this.image.set({ evented: true, hasControls: true });
+      this.viewport.setInteractive(true);
+      this.viewport.activate();
     }
   }
 
   setDecorationProgress(progress) {
     this.decorationProgress = progress;
-    this.overlay.set("opacity", progress);
-    this.frame.set("opacity", progress);
-    this.frameHalo.set("opacity", progress);
-    this.gridLines.forEach((line) => line.set("opacity", progress));
+    this.viewport.setOpacity(progress);
     this.canvas.renderAll();
   }
 
@@ -736,7 +514,6 @@ export class ImageCropSession {
       onComplete?.();
       return;
     }
-
     this.decorationAnimation = util.animate({
       startValue,
       endValue,
@@ -763,9 +540,10 @@ export class ImageCropSession {
     this.finishing = true;
     this.cancelMomentum();
     this.cancelResetAnimation(apply);
+    this.manualPan = null;
     this.unbindInput();
     if (this.canvas._currentTransform) this.canvas.endCurrentTransform();
-    this.image.set({ evented: false, hasControls: false });
+    this.viewport.setInteractive(false);
     this.canvas.requestRenderAll();
     this.animateDecorations(0, () => this.finalize(apply, true));
   }
@@ -790,12 +568,11 @@ export class ImageCropSession {
     this.decorationAnimation?.abort();
     this.decorationAnimation = null;
     const before = { ...this.snapshot };
-
     if (apply) {
       this.image.set({
         ...calculateCropResult(
           this.image,
-          this.frame,
+          this.viewport.frame,
           this.sourceWidth,
           this.sourceHeight,
         ),
@@ -817,7 +594,7 @@ export class ImageCropSession {
     this.restoreInteraction();
     this.image.setCoords();
     this.canvas.discardActiveObject();
-    this.canvas.remove(...this.helpers);
+    this.viewport.remove();
     if (this.image.visible !== false) this.canvas.setActiveObject(this.image);
     this.canvas.requestRenderAll();
 

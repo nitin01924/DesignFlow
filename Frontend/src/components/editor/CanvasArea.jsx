@@ -108,14 +108,17 @@ function CanvasArea({
         ? cropTarget
         : interactionObject || cropTarget || null;
 
-      fabricCanvas.uniformScaling = !(
-        interactionObject?.type === "image" &&
-        !interactionObject.aspectRatioLocked &&
-        !interactionObject.cropModeActive
-      );
+      fabricCanvas.uniformScaling =
+        interactionObject?.cropHelperType === "frame"
+          ? false
+          : !(
+              interactionObject?.type === "image" &&
+              !interactionObject.aspectRatioLocked &&
+              !interactionObject.cropModeActive
+            );
 
       // The crop session renders transforms imperatively at pointer frequency.
-      // Avoid routing every pan/zoom frame through React state.
+      // Avoid routing every crop-frame resize or image pan through React state.
       if (selectedObject?.cropModeActive && event?.transform) return;
       handleSelectionChange(selectedObject);
     };
@@ -328,7 +331,11 @@ function CanvasArea({
           mr: true,
         });
         fabricCanvas.add(image);
+        fabricCanvas.discardActiveObject();
         fabricImageRef.current = image;
+        // Upload only places the asset. Selection and edit modes remain
+        // explicit user actions through the canvas and toolbars.
+        handleSelectionChange(null);
         fabricCanvas.requestRenderAll();
       } catch (error) {
         if (error.name !== "AbortError") {
@@ -350,7 +357,7 @@ function CanvasArea({
     return () => {
       abortController.abort();
     };
-  }, [canvasImage, isHydrated, resetHistory]);
+  }, [canvasImage, handleSelectionChange, isHydrated, resetHistory]);
 
   return (
     <div className="relative flex h-full min-h-0 min-w-0 flex-col">
