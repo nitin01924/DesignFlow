@@ -108,14 +108,15 @@ function CanvasArea({
         ? cropTarget
         : interactionObject || cropTarget || null;
 
-      fabricCanvas.uniformScaling =
-        interactionObject?.cropHelperType === "frame"
-          ? false
-          : !(
-              interactionObject?.type === "image" &&
-              !interactionObject.aspectRatioLocked &&
-              !interactionObject.cropModeActive
-            );
+      fabricCanvas.uniformScaling = !(
+        interactionObject?.type === "image" &&
+        !interactionObject.aspectRatioLocked &&
+        !interactionObject.cropModeActive
+      );
+
+      // The crop session renders transforms imperatively at pointer frequency.
+      // Avoid routing every pan/zoom frame through React state.
+      if (selectedObject?.cropModeActive && event?.transform) return;
       handleSelectionChange(selectedObject);
     };
 
@@ -177,6 +178,12 @@ function CanvasArea({
             scaleY: (object.scaleY || 1) * scaleY,
           });
           object.setCoords();
+        });
+        fabricCanvas.fire("designflow:canvas-resized", {
+          width: nextWidth,
+          height: nextHeight,
+          scaleX,
+          scaleY,
         });
       } else if (fabricImageRef.current) {
         fitImageToCanvas(fabricImageRef.current, fabricCanvas);
@@ -350,7 +357,8 @@ function CanvasArea({
       {crop.isCropping ? (
         <CropActionBar
           onCancel={crop.cancelCrop}
-          onApply={crop.applyCrop}
+          onReset={crop.resetCrop}
+          onDone={crop.doneCrop}
         />
       ) : (
         <>
