@@ -85,6 +85,44 @@ function ProjectWorkspace({ user }) {
     });
   }, [editorState.canvas, executeHistoryAction, handleEditorStateChange]);
 
+  const handleInsertAsset = useCallback(
+    async (descriptor, position) => {
+      if (!editorState.canvas || isEditorBusy) return null;
+
+      try {
+        const { insertAssetIntoCanvas } = await import(
+          "../components/editor/assets/assetCommands.js"
+        );
+        const insertedObject = await executeHistoryAction(
+          {
+            type: `add-${descriptor.type}`,
+            label: `Add ${descriptor.label || descriptor.type}`,
+          },
+          () =>
+            insertAssetIntoCanvas(editorState.canvas, descriptor, {
+              position,
+            }),
+        );
+        if (insertedObject) {
+          handleEditorStateChange({
+            canvas: editorState.canvas,
+            selectedObject: insertedObject,
+          });
+        }
+        return insertedObject;
+      } catch (err) {
+        toast.error(err.message || "Unable to add this asset");
+        return null;
+      }
+    },
+    [
+      editorState.canvas,
+      executeHistoryAction,
+      handleEditorStateChange,
+      isEditorBusy,
+    ],
+  );
+
   const handleExport = useCallback(async (options) => {
     try {
       const fileName = await exportCanvas(options);
@@ -186,6 +224,7 @@ function ProjectWorkspace({ user }) {
               onSave={handleSave}
               saveStatus={saveStatus}
               onAddText={handleAddText}
+              onInsertAsset={handleInsertAsset}
               onExport={() => setIsExportDialogOpen(true)}
               isExporting={isExporting}
               isEditingDisabled={isEditorBusy}
@@ -198,6 +237,7 @@ function ProjectWorkspace({ user }) {
                 onUpload={handleImageUpload}
                 isUploading={isUploading}
                 onAddText={handleAddText}
+                onInsertAsset={handleInsertAsset}
                 disabled={isEditorBusy}
               />
               {/* The workspace provides project data; CanvasArea owns all Fabric state and interactions. */}
@@ -211,6 +251,7 @@ function ProjectWorkspace({ user }) {
                 onEditorStateChange={handleEditorStateChange}
                 onCropModeChange={setIsCropping}
                 history={history}
+                onInsertAsset={handleInsertAsset}
               />
               <PropertiesPanel
                 editorState={editorState}

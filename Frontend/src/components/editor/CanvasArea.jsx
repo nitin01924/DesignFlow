@@ -5,6 +5,10 @@ import MobileObjectToolbar from "./mobile/MobileObjectToolbar";
 import CropActionBar from "./crop/CropActionBar";
 import { useImageCrop } from "./crop/useImageCrop";
 import { initializeLayerObject } from "./layers/layerUtils.js";
+import {
+  hasAssetDragData,
+  readAssetDragData,
+} from "./assets/assetDrag.js";
 
 const fitImageToCanvas = (image, canvas) => {
   const imageWidth = image.width || 1;
@@ -34,6 +38,7 @@ function CanvasArea({
   onEditorStateChange,
   onCropModeChange,
   history,
+  onInsertAsset,
 }) {
   const canvasElementRef = useRef(null);
   const canvasContainerRef = useRef(null);
@@ -43,6 +48,7 @@ function CanvasArea({
   const hasInitializedHistoryRef = useRef(false);
   const { attachCanvas, detachCanvas, reset: resetHistory } = history;
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isAssetDragOver, setIsAssetDragOver] = useState(false);
   const [selection, setSelection] = useState({
     canvas: null,
     object: null,
@@ -359,6 +365,36 @@ function CanvasArea({
     };
   }, [canvasImage, handleSelectionChange, isHydrated, resetHistory]);
 
+  const handleAssetDragOver = (event) => {
+    if (!hasAssetDragData(event.dataTransfer)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    if (!isAssetDragOver) setIsAssetDragOver(true);
+  };
+
+  const handleAssetDragLeave = (event) => {
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+      setIsAssetDragOver(false);
+    }
+  };
+
+  const handleAssetDrop = (event) => {
+    const descriptor = readAssetDragData(event.dataTransfer);
+    if (!descriptor || !fabricCanvasRef.current) return;
+    event.preventDefault();
+    setIsAssetDragOver(false);
+    const position = fabricCanvasRef.current.getScenePoint(event.nativeEvent);
+    void onInsertAsset?.(descriptor, { x: position.x, y: position.y });
+  };
+
+  const hasCanvasObjects = Boolean(
+    canvasImage ||
+      canvasData?.objects?.length ||
+      selection.canvas
+        ?.getObjects()
+        .some((object) => !object.excludeFromExport && !object.cropHelperType),
+  );
+
   return (
     <div className="relative flex h-full min-h-0 min-w-0 flex-col">
       {crop.isCropping ? (
@@ -395,14 +431,21 @@ function CanvasArea({
           refs separates React state from Fabric state and avoids competing render models. */}
       <div
         ref={canvasContainerRef}
-        className="relative aspect-4/3 w-full max-w-3xl overflow-hidden border border-slate-200 bg-white text-center shadow-[0_20px_50px_rgba(15,23,42,0.10)] dark:border-slate-700 dark:shadow-[0_20px_50px_rgba(0,0,0,0.30)]"
+        onDragOver={handleAssetDragOver}
+        onDragLeave={handleAssetDragLeave}
+        onDrop={handleAssetDrop}
+        className={`relative aspect-4/3 w-full max-w-3xl overflow-hidden border bg-white text-center shadow-[0_20px_50px_rgba(15,23,42,0.10)] transition-[border-color,box-shadow] dark:shadow-[0_20px_50px_rgba(0,0,0,0.30)] ${
+          isAssetDragOver
+            ? "border-blue-500 shadow-[0_20px_60px_rgba(37,99,235,0.24)] ring-4 ring-blue-500/20"
+            : "border-slate-200 dark:border-slate-700"
+        }`}
       >
         <canvas
           ref={canvasElementRef}
           aria-label={`${projectTitle} editable canvas`}
         />
 
-        {!canvasImage && !canvasData?.objects?.length && (
+        {!hasCanvasObjects && (
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center p-8">
             <div className="mb-4 grid size-12 place-items-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
               <svg
@@ -423,8 +466,15 @@ function CanvasArea({
               Canvas Area
             </h2>
             <p className="mt-2 text-sm text-slate-400">
-              Upload an image to begin
+              Upload an image or add an asset to begin
             </p>
+          </div>
+        )}
+        {isAssetDragOver && (
+          <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center bg-blue-600/10 backdrop-blur-[1px]">
+            <div className="rounded-2xl bg-slate-950/85 px-5 py-3 text-sm font-semibold text-white shadow-xl">
+              Drop to add this asset
+            </div>
           </div>
         )}
       </div>
