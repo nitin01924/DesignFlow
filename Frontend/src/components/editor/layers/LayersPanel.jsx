@@ -15,6 +15,7 @@ const isCanvasLayer = (object) =>
   !object.excludeFromExport && !object.cropHelperType;
 
 const layerIconPaths = {
+  icon: "M12 3l2.4 5.2L20 9l-4 4 .9 5.8L12 16l-4.9 2.8L8 13 4 9l5.6-.8z",
   image: "M4 5h16v14H4zM4 16l4-4 3 3 3-3 6 6M16 9h.01",
   text: "M5 6V4h14v2M12 4v16m-4 0h8",
   shape: "M5 5h14v14H5z",

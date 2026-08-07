@@ -2,6 +2,7 @@ import { useState } from "react";
 import ImagePropertiesPanel from "./properties/ImagePropertiesPanel";
 import MobileImagePropertiesPanel from "./properties/MobileImagePropertiesPanel";
 import TextPropertiesPanel from "./properties/TextPropertiesPanel";
+import IconPropertiesPanel from "./properties/IconPropertiesPanel";
 import LayersPanel from "./layers/LayersPanel";
 import { useBottomSheet } from "./mobile/useBottomSheet";
 
@@ -125,12 +126,17 @@ function PropertiesPanel({
   const [mobileTab, setMobileTab] = useState("layers");
   const bottomSheet = useBottomSheet("collapsed");
   const selectedObject = editorState?.selectedObject;
-  const SelectedObjectPanel = selectedObject
-    ? propertyPanelByType[selectedObject.type]
-    : null;
-  const MobileSelectedObjectPanel = selectedObject
-    ? mobilePropertyPanelByType[selectedObject.type]
-    : null;
+  const isIcon = selectedObject?.assetType === "icon";
+  const SelectedObjectPanel = isIcon
+    ? IconPropertiesPanel
+    : selectedObject
+      ? propertyPanelByType[selectedObject.type]
+      : null;
+  const MobileSelectedObjectPanel = isIcon
+    ? IconPropertiesPanel
+    : selectedObject
+      ? mobilePropertyPanelByType[selectedObject.type]
+      : null;
 
   const changeMobileTab = (tab) => {
     setMobileTab(tab);

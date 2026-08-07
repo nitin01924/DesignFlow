@@ -1,5 +1,6 @@
 import {
   applyLayerInteractionState,
+  configureLayerControls,
   getUniqueLayerName,
   isTextLayer,
 } from "./layerUtils.js";
@@ -83,15 +84,7 @@ export const setLayerLocked = (canvas, object, locked) => {
         : {}),
     });
 
-    if (String(object.type).toLowerCase() === "image") {
-      const aspectRatioLocked = Boolean(object.aspectRatioLocked);
-      object.setControlsVisibility({
-        mt: !aspectRatioLocked,
-        mb: !aspectRatioLocked,
-        ml: !aspectRatioLocked,
-        mr: !aspectRatioLocked,
-      });
-    }
+    configureLayerControls(object);
   }
 
   object.setCoords();
@@ -119,15 +112,7 @@ export const duplicateLayer = async (canvas, object, offset = 20) => {
     historyId: undefined,
     name: getUniqueLayerName(canvas, `${object.name || "Layer"} copy`),
   });
-  if (String(clone.type).toLowerCase() === "image") {
-    const aspectRatioLocked = Boolean(clone.aspectRatioLocked);
-    clone.setControlsVisibility({
-      mt: !aspectRatioLocked,
-      mb: !aspectRatioLocked,
-      ml: !aspectRatioLocked,
-      mr: !aspectRatioLocked,
-    });
-  }
+  configureLayerControls(clone);
   applyLayerInteractionState(clone);
   clone.setCoords();
   canvas.add(clone);
