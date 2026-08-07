@@ -1,10 +1,16 @@
-import { useRef, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import TextQuickActions from "./text/TextQuickActions";
+
+const AssetLibraryPanel = lazy(() => import("./assets/AssetLibraryPanel.jsx"));
 
 const tools = [
   {
     label: "Upload",
     path: "M12 16V4m0 0L7 9m5-5 5 5M5 14v5h14v-5",
+  },
+  {
+    label: "Assets",
+    path: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM17 14l3 6h-6z",
   },
   { label: "Text", path: "M5 6V4h14v2M12 4v16m-4 0h8" },
   { label: "Shapes", path: "M4 4h7v7H4zM14 14h6v6h-6zM17 4l3 6h-6z" },
@@ -18,7 +24,13 @@ const tools = [
   },
 ];
 
-function EditorSidebar({ onUpload, isUploading, onAddText, disabled = false }) {
+function EditorSidebar({
+  onUpload,
+  isUploading,
+  onAddText,
+  onInsertAsset,
+  disabled = false,
+}) {
   const fileInputRef = useRef(null);
   const [activeTool, setActiveTool] = useState(null);
 
@@ -30,6 +42,8 @@ function EditorSidebar({ onUpload, isUploading, onAddText, disabled = false }) {
       setActiveTool(null);
     } else if (tool.label === "Text") {
       setActiveTool((current) => (current === "Text" ? null : "Text"));
+    } else if (tool.label === "Assets") {
+      setActiveTool((current) => (current === "Assets" ? null : "Assets"));
     }
   };
 
@@ -63,11 +77,17 @@ function EditorSidebar({ onUpload, isUploading, onAddText, disabled = false }) {
             title={
               tool.label === "Upload"
                 ? "Upload an image"
-                : tool.label === "Text"
-                  ? "Add text"
-                  : `${tool.label} tools coming soon`
+                : tool.label === "Assets"
+                  ? "Browse reusable assets"
+                  : tool.label === "Text"
+                    ? "Add text"
+                    : `${tool.label} tools coming soon`
             }
-            aria-pressed={tool.label === "Text" ? activeTool === "Text" : undefined}
+            aria-pressed={
+              tool.label === "Text" || tool.label === "Assets"
+                ? activeTool === tool.label
+                : undefined
+            }
             className={`group flex min-w-18 flex-col items-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-medium transition hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-blue-950/60 dark:hover:text-blue-300 md:min-w-0 ${
               activeTool === tool.label
                 ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
@@ -105,6 +125,22 @@ function EditorSidebar({ onUpload, isUploading, onAddText, disabled = false }) {
               setActiveTool(null);
             }}
           />
+        </section>
+      )}
+      {activeTool === "Assets" && (
+        <section className="absolute inset-y-0 left-full w-80 overflow-hidden border-r border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-950">
+          <Suspense
+            fallback={
+              <div className="grid h-full place-items-center text-sm text-slate-400">
+                Loading assets…
+              </div>
+            }
+          >
+            <AssetLibraryPanel
+              onInsertAsset={onInsertAsset}
+              onClose={() => setActiveTool(null)}
+            />
+          </Suspense>
         </section>
       )}
     </aside>
