@@ -17,6 +17,7 @@ export const isTextLayer = (object) => TEXT_TYPES.has(normalizeType(object));
 
 export const getLayerKind = (object) => {
   const type = normalizeType(object);
+  if (object?.assetType === "frame") return "frame";
   if (object?.assetType === "icon") return "icon";
   if (type === "image") return "image";
   if (TEXT_TYPES.has(type)) return "text";
@@ -38,6 +39,7 @@ const getTextLayerName = (object) => {
 
 export const getLayerBaseName = (object) => {
   const type = normalizeType(object);
+  if (object?.assetType === "frame") return "Frame";
   if (object?.assetType === "icon") return "Icon";
   if (type === "image") return "Image";
   if (TEXT_TYPES.has(type)) return getTextLayerName(object);
@@ -50,9 +52,13 @@ export const configureLayerControls = (object) => {
 
   const isImage = normalizeType(object) === "image";
   const isIcon = object.assetType === "icon";
-  if (!isImage && !isIcon) return;
+  const isFrame = object.assetType === "frame";
+  if (!isImage && !isIcon && !isFrame) return;
 
   if (isIcon) {
+    object.set({ aspectRatioLocked: true, lockedAspectRatio: 1 });
+  }
+  if (isFrame && object.frameKind === "circle") {
     object.set({ aspectRatioLocked: true, lockedAspectRatio: 1 });
   }
   const aspectRatioLocked = Boolean(object.aspectRatioLocked);

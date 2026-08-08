@@ -15,6 +15,7 @@ const isCanvasLayer = (object) =>
   !object.excludeFromExport && !object.cropHelperType;
 
 const layerIconPaths = {
+  frame: "M4 4h16v16H4zM8 8h8v8H8z",
   icon: "M12 3l2.4 5.2L20 9l-4 4 .9 5.8L12 16l-4.9 2.8L8 13 4 9l5.6-.8z",
   image: "M4 5h16v14H4zM4 16l4-4 3 3 3-3 6 6M16 9h.01",
   text: "M5 6V4h14v2M12 4v16m-4 0h8",
@@ -255,7 +256,7 @@ function LayersPanel({
         {!layers.length && (
           <div className="mx-2 mt-3 rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center dark:border-slate-700">
             <p className="text-sm font-medium text-slate-600 dark:text-slate-300">No layers yet</p>
-            <p className="mt-1 text-xs text-slate-400">Add an image, text, or shape to begin.</p>
+            <p className="mt-1 text-xs text-slate-400">Add an image, frame, text, or shape to begin.</p>
           </div>
         )}
 

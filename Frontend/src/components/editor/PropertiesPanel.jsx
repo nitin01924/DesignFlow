@@ -3,6 +3,7 @@ import ImagePropertiesPanel from "./properties/ImagePropertiesPanel";
 import MobileImagePropertiesPanel from "./properties/MobileImagePropertiesPanel";
 import TextPropertiesPanel from "./properties/TextPropertiesPanel";
 import IconPropertiesPanel from "./properties/IconPropertiesPanel";
+import FramePropertiesPanel from "./properties/FramePropertiesPanel";
 import LayersPanel from "./layers/LayersPanel";
 import { useBottomSheet } from "./mobile/useBottomSheet";
 
@@ -127,16 +128,21 @@ function PropertiesPanel({
   const bottomSheet = useBottomSheet("collapsed");
   const selectedObject = editorState?.selectedObject;
   const isIcon = selectedObject?.assetType === "icon";
-  const SelectedObjectPanel = isIcon
-    ? IconPropertiesPanel
-    : selectedObject
-      ? propertyPanelByType[selectedObject.type]
-      : null;
-  const MobileSelectedObjectPanel = isIcon
-    ? IconPropertiesPanel
-    : selectedObject
-      ? mobilePropertyPanelByType[selectedObject.type]
-      : null;
+  const isFrame = selectedObject?.assetType === "frame";
+  const SelectedObjectPanel = isFrame
+    ? FramePropertiesPanel
+    : isIcon
+      ? IconPropertiesPanel
+      : selectedObject
+        ? propertyPanelByType[selectedObject.type]
+        : null;
+  const MobileSelectedObjectPanel = isFrame
+    ? FramePropertiesPanel
+    : isIcon
+      ? IconPropertiesPanel
+      : selectedObject
+        ? mobilePropertyPanelByType[selectedObject.type]
+        : null;
 
   const changeMobileTab = (tab) => {
     setMobileTab(tab);
