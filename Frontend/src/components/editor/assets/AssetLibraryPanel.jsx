@@ -34,6 +34,43 @@ function IconPreview({ asset, className = "size-6" }) {
   );
 }
 
+const framePreviewPaths = {
+  rectangle: <rect x="3" y="5" width="18" height="14" rx="1" />,
+  roundedRectangle: <rect x="3" y="5" width="18" height="14" rx="4" />,
+  circle: <circle cx="12" cy="12" r="8.5" />,
+  ellipse: <ellipse cx="12" cy="12" rx="9" ry="6.5" />,
+  triangle: <path d="M12 3 22 20H2Z" strokeLinejoin="round" />,
+  hexagon: <path d="m7 3 10 0 5 9-5 9H7l-5-9Z" strokeLinejoin="round" />,
+  blob: <path d="M19.5 6.2c2.2 3.4 1.8 8.5-1.2 11.3-3 2.7-8.7 3.1-12 .6C3 15.6 2 10.3 4.4 6.8 6.8 3.3 10.7 2 14 3c2 .5 4.2 1.5 5.5 3.2Z" />,
+  phone: <><rect x="6.5" y="2" width="11" height="20" rx="2.7" /><path d="M10 4h4M11 19.5h2" /></>,
+  laptop: <><rect x="4" y="4" width="16" height="12" rx="1.5" /><path d="m2 19 2-3h16l2 3H2Z" /></>,
+  browser: <><rect x="2.5" y="4" width="19" height="16" rx="2" /><path d="M3 8h18M6 6h.01M9 6h.01" /></>,
+};
+
+function FramePreview({ asset, className = "size-8" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="currentColor"
+      fillOpacity="0.08"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+    >
+      {framePreviewPaths[asset.kind] || framePreviewPaths.rectangle}
+    </svg>
+  );
+}
+
+function AssetPreview({ asset, className }) {
+  return asset.type === "frame" ? (
+    <FramePreview asset={asset} className={className} />
+  ) : (
+    <IconPreview asset={asset} className={className} />
+  );
+}
+
 function LoadingGrid() {
   return (
     <div className="grid grid-cols-4 gap-2 p-4 sm:grid-cols-5 md:grid-cols-4">
@@ -73,7 +110,7 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
       },
       () => {
         if (!isCurrent) return;
-        setLoadError("The icon library could not be loaded.");
+        setLoadError("The asset library could not be loaded.");
         setIsLoading(false);
       },
     );
@@ -100,6 +137,10 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
   }, [assets, deferredQuery]);
 
   const visibleAssets = filteredAssets.slice(0, visibleCount);
+  const activeSectionDetails = assetSections.find(
+    (section) => section.id === activeSection,
+  );
+  const assetNoun = activeSectionDetails?.assetType === "frame" ? "frame" : "icon";
 
   useEffect(() => {
     const sentinel = loadMoreRef.current;
@@ -206,7 +247,7 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
         </div>
 
         <label className="relative mt-3 block">
-          <span className="sr-only">Search icons</span>
+          <span className="sr-only">Search {assetNoun}s</span>
           <svg
             viewBox="0 0 24 24"
             className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
@@ -222,7 +263,7 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
             type="search"
             value={query}
             onChange={updateQuery}
-            placeholder="Search icons"
+            placeholder={`Search ${assetNoun}s`}
             autoComplete="off"
             className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:bg-slate-950"
           />
@@ -234,7 +275,7 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
                 setVisibleCount(INITIAL_RESULT_COUNT);
               }}
               className="absolute right-1.5 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800"
-              aria-label="Clear icon search"
+              aria-label={`Clear ${assetNoun} search`}
             >
               ×
             </button>
@@ -243,8 +284,8 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
 
         <p className="mt-2 text-[11px] text-slate-400" aria-live="polite">
           {isLoading
-            ? "Loading icons…"
-            : `${filteredAssets.length.toLocaleString()} icon${filteredAssets.length === 1 ? "" : "s"}`}
+            ? `Loading ${assetNoun}s…`
+            : `${filteredAssets.length.toLocaleString()} ${assetNoun}${filteredAssets.length === 1 ? "" : "s"}`}
         </p>
       </div>
 
@@ -260,7 +301,7 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
             <div
               className={`grid gap-2 p-4 ${mobile ? "grid-cols-5" : "grid-cols-4"}`}
               role="group"
-              aria-label="Available icons"
+              aria-label={`Available ${assetNoun}s`}
             >
               {visibleAssets.map((asset) => {
                 const isPending = pendingAssetId === asset.id;
@@ -295,9 +336,17 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
                       {isPending ? (
                         <span className="size-5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
                       ) : (
-                        <IconPreview
+                        <AssetPreview
                           asset={asset}
-                          className={mobile ? "size-6" : "size-7"}
+                          className={
+                            asset.type === "frame"
+                              ? mobile
+                                ? "size-8"
+                                : "size-10"
+                              : mobile
+                                ? "size-6"
+                                : "size-7"
+                          }
                         />
                       )}
                     </span>
@@ -320,7 +369,7 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
                   }
                   className="min-h-10 rounded-xl px-4 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-blue-600 dark:text-blue-400 dark:hover:bg-blue-950/40"
                 >
-                  Load more icons
+                  Load more {assetNoun}s
                 </button>
               </div>
             ) : (
@@ -336,17 +385,19 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
               </svg>
             </div>
             <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">
-              No icons found
+              No {assetNoun}s found
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              Try a broader search, such as arrow, user, or shape.
+              Try a broader search term.
             </p>
           </div>
         )}
       </div>
 
       <div className="shrink-0 border-t border-slate-100 px-4 py-2.5 text-center text-[10px] text-slate-400 dark:border-slate-800">
-        Lucide Icons · Open-source ISC license
+        {activeSection === "icons"
+          ? "Lucide Icons · Open-source ISC license"
+          : "DesignFlow Frames · Non-destructive image containers"}
       </div>
     </div>
   );

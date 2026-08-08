@@ -13,6 +13,20 @@ const providers = [
       return catalog.getIconAsset(assetId);
     },
   },
+  {
+    id: "frames",
+    label: "Frames",
+    assetType: "frame",
+    description: "Non-destructive image containers",
+    async load() {
+      const catalog = await import("./frameCatalog.js");
+      return catalog.frameAssets;
+    },
+    async resolve(assetId) {
+      const catalog = await import("./frameCatalog.js");
+      return catalog.getFrameAsset(assetId);
+    },
+  },
 ];
 
 const providersById = new Map(providers.map((provider) => [provider.id, provider]));

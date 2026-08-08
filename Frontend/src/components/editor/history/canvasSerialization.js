@@ -1,4 +1,5 @@
 import { FabricObject } from "fabric";
+import "../frames/DesignFlowFrame.js";
 
 // Keep document serialization in one place so persistence and in-memory history
 // always restore the same DesignFlow-specific Fabric properties.
@@ -25,6 +26,12 @@ const DESIGNFLOW_OBJECT_PROPERTIES = [
   "assetId",
   "assetLibrary",
   "assetColor",
+  "frameKind",
+  "frameAssetId",
+  "frameImageSrc",
+  "frameImageZoom",
+  "frameImageOffsetX",
+  "frameImageOffsetY",
   "cropWidth",
   "cropHeight",
   "originalWidth",
