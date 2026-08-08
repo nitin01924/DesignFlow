@@ -12,6 +12,7 @@ import { addTextToCanvas } from "../components/editor/text/textPresets";
 import ExportDialog from "../components/editor/export/ExportDialog";
 import { useCanvasExport } from "../hooks/useCanvasExport";
 import { useCanvasHistory } from "../components/editor/history/useCanvasHistory";
+import { replaceFrameImage } from "../components/editor/frames/frameCommands.js";
 
 function ProjectWorkspace({ user }) {
   // useParams reads dynamic values from the route, so /project/:id gives us this project's id.
@@ -24,6 +25,7 @@ function ProjectWorkspace({ user }) {
   const [isUploading, setIsUploading] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isCropping, setIsCropping] = useState(false);
+  const [isFrameEditing, setIsFrameEditing] = useState(false);
   const [editorState, setEditorState] = useState({
     canvas: null,
     selectedObject: null,
@@ -57,9 +59,13 @@ function ProjectWorkspace({ user }) {
     }));
   }, []);
 
-  const history = useCanvasHistory({ disabled: isCropping, maxStates: 100 });
+  const history = useCanvasHistory({
+    disabled: isCropping || isFrameEditing,
+    maxStates: 100,
+  });
   const executeHistoryAction = history.execute;
-  const isEditorBusy = isCropping || history.isRestoring || !history.isReady;
+  const isEditorBusy =
+    isCropping || isFrameEditing || history.isRestoring || !history.isReady;
   const { save, saveStatus } = useProjectSave({
     projectId: id,
     canvas: editorState.canvas,
@@ -188,6 +194,72 @@ function ProjectWorkspace({ user }) {
     }
   };
 
+  const handleReplaceFrameImage = useCallback(
+    async (frame, file) => {
+      if (
+        !frame ||
+        !file ||
+        !editorState.canvas?.getObjects().includes(frame) ||
+        history.isRestoring ||
+        !history.isReady
+      ) {
+        return null;
+      }
+
+      try {
+        setIsUploading(true);
+        const hadImage = Boolean(frame.frameImageSrc);
+        const updatedProject = await uploadProjectImage(id, file);
+        const source = updatedProject.canvasImage;
+        if (
+          !editorState.canvas.getObjects().includes(frame) ||
+          history.isRestoring
+        ) {
+          throw new Error("The frame is no longer available.");
+        }
+        const replacedFrame = await executeHistoryAction(
+          {
+            type: hadImage
+              ? "replace-frame-image"
+              : "add-image-to-frame",
+            label: hadImage
+              ? "Replace frame image"
+              : "Add image to frame",
+          },
+          () => replaceFrameImage(editorState.canvas, frame, source),
+        );
+
+        setProject((current) => ({
+          ...updatedProject,
+          canvasData: current?.canvasData,
+          canvasWidth: current?.canvasWidth,
+          canvasHeight: current?.canvasHeight,
+        }));
+        if (replacedFrame) {
+          handleEditorStateChange({
+            canvas: editorState.canvas,
+            selectedObject: replacedFrame,
+          });
+          toast.success(hadImage ? "Frame image replaced" : "Image added to frame");
+        }
+        return replacedFrame;
+      } catch (err) {
+        toast.error(err.message || "Unable to replace the frame image");
+        return null;
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [
+      editorState.canvas,
+      executeHistoryAction,
+      handleEditorStateChange,
+      history.isReady,
+      history.isRestoring,
+      id,
+    ],
+  );
+
   return (
     <main className="h-dvh overflow-hidden bg-slate-100 text-slate-900 transition-colors dark:bg-slate-900 dark:text-slate-100 md:h-auto md:min-h-[calc(100vh-73px)] md:overflow-visible">
       <div className="flex h-full items-center justify-center md:min-h-[calc(100vh-73px)]">
@@ -250,8 +322,10 @@ function ProjectWorkspace({ user }) {
                 projectTitle={project.title}
                 onEditorStateChange={handleEditorStateChange}
                 onCropModeChange={setIsCropping}
+                onFrameEditModeChange={setIsFrameEditing}
                 history={history}
                 onInsertAsset={handleInsertAsset}
+                onReplaceFrameImage={handleReplaceFrameImage}
               />
               <PropertiesPanel
                 editorState={editorState}

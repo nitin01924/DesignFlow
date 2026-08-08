@@ -15,6 +15,8 @@ const iconPaths = {
   lock: "M7 10V7a5 5 0 0 1 10 0v3M5 10h14v10H5zM12 14v2",
   unlock: "M8 10V7a4 4 0 0 1 7.5-2M5 10h14v10H5zM12 14v2",
   crop: "M7 3v14a4 4 0 0 0 4 4h10M3 7h14a4 4 0 0 1 4 4v10",
+  editFrame: "M4 18.5V20h1.5L16.8 8.7l-1.5-1.5L4 18.5ZM14 8.5l1.5 1.5M18 4l2 2-2.2 2.2-2-2L18 4Z",
+  replace: "M4 7h12m0 0-3-3m3 3-3 3M20 17H8m0 0 3 3m-3-3 3-3",
 };
 
 function ToolbarButton({ action, onClick }) {
@@ -52,6 +54,8 @@ function EditorToolbar({
   selectedObject,
   onSelectionChange,
   onCrop,
+  onEditFrame,
+  onReplaceFrame,
   history,
 }) {
   const hasSelection = Boolean(
@@ -123,6 +127,14 @@ function EditorToolbar({
   const actions = [
     ...(selectedObject?.type === "image"
       ? [{ label: "Crop image", shortLabel: "Crop", icon: "crop", disabled: isLayerLocked, run: () => onCrop?.(selectedObject) }]
+      : []),
+    ...(selectedObject?.assetType === "frame"
+      ? [
+          ...(selectedObject.hasFrameImage
+            ? [{ label: "Edit frame image", shortLabel: "Edit image", icon: "editFrame", disabled: isLayerLocked, run: () => onEditFrame?.(selectedObject) }]
+            : []),
+          { label: "Replace frame image", shortLabel: selectedObject.hasFrameImage ? "Replace" : "Add image", icon: "replace", disabled: isLayerLocked, run: () => onReplaceFrame?.(selectedObject) },
+        ]
       : []),
     { label: "Duplicate selected object", shortLabel: "Duplicate", icon: "duplicate", disabled: isLayerLocked, run: duplicateSelection },
     { label: "Rotate left 90 degrees", shortLabel: "Rotate left", icon: "rotateLeft", disabled: isLayerLocked, run: () => rotate(-90) },

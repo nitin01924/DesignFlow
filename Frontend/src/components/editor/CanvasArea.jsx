@@ -4,6 +4,13 @@ import EditorToolbar from "./EditorToolbar";
 import MobileObjectToolbar from "./mobile/MobileObjectToolbar";
 import CropActionBar from "./crop/CropActionBar";
 import { useImageCrop } from "./crop/useImageCrop";
+import FrameEditActionBar from "./frames/FrameEditActionBar.jsx";
+import { useFrameEditing } from "./frames/useFrameEditing.js";
+import {
+  findFrameAtPoint,
+  isDesignFlowFrame,
+  placeCanvasImageInFrame,
+} from "./frames/frameCommands.js";
 import { initializeLayerObject } from "./layers/layerUtils.js";
 import {
   hasAssetDragData,
@@ -37,18 +44,34 @@ function CanvasArea({
   projectTitle,
   onEditorStateChange,
   onCropModeChange,
+  onFrameEditModeChange,
   history,
   onInsertAsset,
+  onReplaceFrameImage,
 }) {
   const canvasElementRef = useRef(null);
   const canvasContainerRef = useRef(null);
   const fabricCanvasRef = useRef(null);
   const fabricImageRef = useRef(null);
+  const frameReplaceInputRef = useRef(null);
+  const pendingFrameReplacementRef = useRef(null);
+  const frameDropTargetRef = useRef(null);
+  const frameDropTransactionImageRef = useRef(null);
+  const externalDragFrameRef = useRef(null);
   const lastCanvasSizeRef = useRef(null);
   const hasInitializedHistoryRef = useRef(false);
-  const { attachCanvas, detachCanvas, reset: resetHistory } = history;
+  const {
+    attachCanvas,
+    detachCanvas,
+    reset: resetHistory,
+    begin: beginHistory,
+    commit: commitHistory,
+    cancel: cancelHistory,
+  } = history;
   const [isHydrated, setIsHydrated] = useState(false);
   const [isAssetDragOver, setIsAssetDragOver] = useState(false);
+  const [dragMessage, setDragMessage] = useState("Drop to add this asset");
+  const [frameContextMenu, setFrameContextMenu] = useState(null);
   const [selection, setSelection] = useState({
     canvas: null,
     object: null,
@@ -72,6 +95,70 @@ function CanvasArea({
     onSelectionChange: handleSelectionChange,
     onModeChange: onCropModeChange,
   });
+
+  const openFrameReplaceDialog = useCallback((frame) => {
+    if (!isDesignFlowFrame(frame) || frame.layerLocked) return;
+    pendingFrameReplacementRef.current = frame;
+    frameReplaceInputRef.current?.click();
+  }, []);
+
+  const frameEditing = useFrameEditing({
+    canvas: selection.canvas,
+    history,
+    onModeChange: onFrameEditModeChange,
+    onRequestReplace: openFrameReplaceDialog,
+  });
+  const {
+    start: startFrameEditing,
+    done: doneFrameEditing,
+    isEditing: isFrameImageEditing,
+  } = frameEditing;
+
+  const requestFrameReplacement = useCallback(
+    (frame) => {
+      if (isFrameImageEditing) doneFrameEditing();
+      openFrameReplaceDialog(frame);
+    },
+    [doneFrameEditing, isFrameImageEditing, openFrameReplaceDialog],
+  );
+
+  useEffect(() => {
+    const canvas = selection.canvas;
+    if (!canvas) return;
+    const handleEditRequest = (event) => startFrameEditing(event.frame);
+    const handleReplaceRequest = (event) =>
+      requestFrameReplacement(event.frame);
+    canvas.on("designflow:frame-edit-request", handleEditRequest);
+    canvas.on("designflow:frame-replace-request", handleReplaceRequest);
+    return () => {
+      canvas.off("designflow:frame-edit-request", handleEditRequest);
+      canvas.off("designflow:frame-replace-request", handleReplaceRequest);
+    };
+  }, [requestFrameReplacement, selection.canvas, startFrameEditing]);
+
+  const handleFrameReplacementFile = async (event) => {
+    const [file] = event.target.files;
+    const frame = pendingFrameReplacementRef.current;
+    event.target.value = "";
+    pendingFrameReplacementRef.current = null;
+    if (!file || !frame) return;
+    const replaced = await onReplaceFrameImage?.(frame, file);
+    if (replaced) handleSelectionChange(frame);
+  };
+
+  useEffect(() => {
+    if (!frameContextMenu) return;
+    const closeMenu = () => setFrameContextMenu(null);
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") closeMenu();
+    };
+    window.addEventListener("pointerdown", closeMenu);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("pointerdown", closeMenu);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [frameContextMenu]);
 
   useEffect(() => {
     if (!selection.canvas) return;
@@ -152,15 +239,110 @@ function CanvasArea({
       initializeLayerObject(fabricCanvas, event.target);
     };
 
+    const setFrameDropHighlight = (frame) => {
+      if (frameDropTargetRef.current === frame) return;
+      if (frameDropTargetRef.current) {
+        frameDropTargetRef.current.frameDropActive = false;
+        frameDropTargetRef.current.dirty = true;
+      }
+      frameDropTargetRef.current = frame || null;
+      if (frame) {
+        frame.frameDropActive = true;
+        frame.dirty = true;
+      }
+      fabricCanvas.requestRenderAll();
+    };
+
+    const handleFrameDropHover = (event) => {
+      const image = event.target;
+      if (image?.type !== "image" || image.cropModeActive) return;
+      const frame = findFrameAtPoint(
+        fabricCanvas,
+        image.getCenterPoint(),
+        image,
+      );
+      setFrameDropHighlight(frame);
+      image._designflowFrameDropTarget = frame || null;
+      if (frame && image._designflowFrameDropOpacity === undefined) {
+        image._designflowFrameDropOpacity = image.opacity ?? 1;
+        image.set({ opacity: Math.min(image.opacity ?? 1, 0.72) });
+      } else if (!frame && image._designflowFrameDropOpacity !== undefined) {
+        image.set({ opacity: image._designflowFrameDropOpacity });
+        delete image._designflowFrameDropOpacity;
+      }
+      if (frame && frameDropTransactionImageRef.current !== image) {
+        // Begin only after a frame is encountered. This suppresses Fabric's
+        // transform commit so removing the source image and filling the frame
+        // becomes one atomic undo entry.
+        beginHistory({
+          type: "place-image-in-frame",
+          label: "Place image in frame",
+        });
+        frameDropTransactionImageRef.current = image;
+        image._designflowFrameDropTransaction = true;
+      }
+    };
+
+    const handleFrameDrop = (event) => {
+      const image = event.target;
+      if (image?.type !== "image") return;
+      const frame = image._designflowFrameDropTarget;
+      const ownsTransaction = frameDropTransactionImageRef.current === image;
+      if (image._designflowFrameDropOpacity !== undefined) {
+        image.set({ opacity: image._designflowFrameDropOpacity });
+        delete image._designflowFrameDropOpacity;
+      }
+      delete image._designflowFrameDropTarget;
+      delete image._designflowFrameDropTransaction;
+      frameDropTransactionImageRef.current = null;
+      setFrameDropHighlight(null);
+
+      if (!ownsTransaction) return;
+      if (!frame) {
+        commitHistory({ type: "move-image", label: "Move image" });
+        return;
+      }
+
+      void placeCanvasImageInFrame(fabricCanvas, frame, image).then(
+        (placedFrame) => {
+          commitHistory({
+            type: "place-image-in-frame",
+            label: "Place image in frame",
+          });
+          if (placedFrame) handleSelectionChange(placedFrame);
+        },
+        (error) => {
+          cancelHistory();
+          console.error("Unable to place image in frame", error);
+        },
+      );
+    };
+
+    const handleContextMenu = (event) => {
+      const target = fabricCanvas.findTarget(event);
+      if (!isDesignFlowFrame(target) || target.layerLocked) return;
+      event.preventDefault();
+      fabricCanvas.setActiveObject(target);
+      handleSelectionChange(target);
+      setFrameContextMenu({
+        frame: target,
+        x: Math.max(8, Math.min(event.clientX, window.innerWidth - 196)),
+        y: Math.max(8, Math.min(event.clientY, window.innerHeight - 128)),
+      });
+    };
+
     fabricCanvas.on("object:added", syncLayerObject);
     fabricCanvas.on("selection:created", syncSelection);
     fabricCanvas.on("selection:updated", syncSelection);
     fabricCanvas.on("selection:cleared", syncSelection);
     fabricCanvas.on("object:moving", syncSelection);
+    fabricCanvas.on("object:moving", handleFrameDropHover);
     fabricCanvas.on("object:scaling", syncScaling);
     fabricCanvas.on("object:rotating", syncSelection);
     fabricCanvas.on("object:modified", syncSelection);
     fabricCanvas.on("text:changed", syncSelection);
+    fabricCanvas.on("mouse:up", handleFrameDrop);
+    fabricCanvas.upperCanvasEl.addEventListener("contextmenu", handleContextMenu);
     attachCanvas(fabricCanvas, { onRestored: handleSelectionChange });
 
     const resizeCanvas = () => {
@@ -213,17 +395,33 @@ function CanvasArea({
       fabricCanvas.off("selection:updated", syncSelection);
       fabricCanvas.off("selection:cleared", syncSelection);
       fabricCanvas.off("object:moving", syncSelection);
+      fabricCanvas.off("object:moving", handleFrameDropHover);
       fabricCanvas.off("object:scaling", syncScaling);
       fabricCanvas.off("object:rotating", syncSelection);
       fabricCanvas.off("object:modified", syncSelection);
       fabricCanvas.off("text:changed", syncSelection);
+      fabricCanvas.off("mouse:up", handleFrameDrop);
+      fabricCanvas.upperCanvasEl.removeEventListener("contextmenu", handleContextMenu);
+      if (frameDropTargetRef.current) {
+        frameDropTargetRef.current.frameDropActive = false;
+        frameDropTargetRef.current = null;
+      }
       detachCanvas(fabricCanvas);
       fabricImageRef.current = null;
       lastCanvasSizeRef.current = null;
       fabricCanvasRef.current = null;
       void fabricCanvas.dispose();
     };
-  }, [attachCanvas, detachCanvas, handleSelectionChange, onEditorStateChange]);
+  }, [
+    attachCanvas,
+    beginHistory,
+    cancelHistory,
+    commitHistory,
+    detachCanvas,
+    handleSelectionChange,
+    onEditorStateChange,
+    openFrameReplaceDialog,
+  ]);
 
   useEffect(() => {
     const fabricCanvas = fabricCanvasRef.current;
@@ -260,6 +458,11 @@ function CanvasArea({
                 ml: !locked,
                 mr: !locked,
               });
+            }
+            if (isDesignFlowFrame(object)) {
+              object.frameDropActive = false;
+              object.frameEditActive = false;
+              object.dirty = true;
             }
             object.setCoords();
           });
@@ -298,9 +501,15 @@ function CanvasArea({
       // Only add the asset when it is not part of the serialized document.
       const existingImage = fabricCanvas
         .getObjects()
-        .find((object) => object.type === "image" && object.getSrc?.() === canvasImage);
+        .find(
+          (object) =>
+            (object.type === "image" && object.getSrc?.() === canvasImage) ||
+            (isDesignFlowFrame(object) && object.frameImageSrc === canvasImage),
+        );
       if (existingImage) {
-        fabricImageRef.current = existingImage;
+        if (existingImage.type === "image") {
+          fabricImageRef.current = existingImage;
+        }
         if (!hasInitializedHistoryRef.current) {
           resetHistory();
           hasInitializedHistoryRef.current = true;
@@ -365,24 +574,69 @@ function CanvasArea({
     };
   }, [canvasImage, handleSelectionChange, isHydrated, resetHistory]);
 
+  const clearExternalFrameHighlight = () => {
+    if (!externalDragFrameRef.current) return;
+    externalDragFrameRef.current.frameDropActive = false;
+    externalDragFrameRef.current.dirty = true;
+    externalDragFrameRef.current = null;
+    fabricCanvasRef.current?.requestRenderAll();
+  };
+
   const handleAssetDragOver = (event) => {
-    if (!hasAssetDragData(event.dataTransfer)) return;
+    const isAsset = hasAssetDragData(event.dataTransfer);
+    const isImageFile = Array.from(event.dataTransfer?.items || []).some(
+      (item) => item.kind === "file" && item.type.startsWith("image/"),
+    );
+    if (!isAsset && !isImageFile) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = "copy";
+
+    if (isImageFile && fabricCanvasRef.current) {
+      const point = fabricCanvasRef.current.getScenePoint(event.nativeEvent);
+      const frame = findFrameAtPoint(fabricCanvasRef.current, point);
+      if (externalDragFrameRef.current !== frame) {
+        clearExternalFrameHighlight();
+        externalDragFrameRef.current = frame;
+        if (frame) {
+          frame.frameDropActive = true;
+          frame.dirty = true;
+          fabricCanvasRef.current.requestRenderAll();
+        }
+      }
+      setDragMessage("Drop the image onto a frame");
+      setIsAssetDragOver(!frame);
+      return;
+    }
+
+    setDragMessage("Drop to add this asset");
     if (!isAssetDragOver) setIsAssetDragOver(true);
   };
 
   const handleAssetDragLeave = (event) => {
     if (!event.currentTarget.contains(event.relatedTarget)) {
       setIsAssetDragOver(false);
+      clearExternalFrameHighlight();
     }
   };
 
   const handleAssetDrop = (event) => {
     const descriptor = readAssetDragData(event.dataTransfer);
-    if (!descriptor || !fabricCanvasRef.current) return;
+    const [imageFile] = Array.from(event.dataTransfer?.files || []).filter(
+      (file) => file.type.startsWith("image/"),
+    );
+    const targetFrame = externalDragFrameRef.current;
+    if (!fabricCanvasRef.current || (!descriptor && !imageFile)) return;
     event.preventDefault();
     setIsAssetDragOver(false);
+    clearExternalFrameHighlight();
+    if (imageFile) {
+      if (targetFrame) {
+        void Promise.resolve(onReplaceFrameImage?.(targetFrame, imageFile)).then((replaced) => {
+          if (replaced) handleSelectionChange(targetFrame);
+        });
+      }
+      return;
+    }
     const position = fabricCanvasRef.current.getScenePoint(event.nativeEvent);
     void onInsertAsset?.(descriptor, { x: position.x, y: position.y });
   };
@@ -397,11 +651,64 @@ function CanvasArea({
 
   return (
     <div className="relative flex h-full min-h-0 min-w-0 flex-col">
+      <input
+        ref={frameReplaceInputRef}
+        type="file"
+        accept="image/*"
+        onChange={(event) => void handleFrameReplacementFile(event)}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden="true"
+      />
+      {frameContextMenu && (
+        <div
+          className="fixed z-[90] w-48 rounded-2xl border border-slate-200 bg-white p-1.5 text-left shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+          style={{ left: frameContextMenu.x, top: frameContextMenu.y }}
+          role="menu"
+          aria-label="Frame actions"
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          {frameContextMenu.frame.hasFrameImage && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                frameEditing.start(frameContextMenu.frame);
+                setFrameContextMenu(null);
+              }}
+              className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <span aria-hidden="true">✎</span>
+              Edit image
+            </button>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              requestFrameReplacement(frameContextMenu.frame);
+              setFrameContextMenu(null);
+            }}
+            className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <span aria-hidden="true">⇄</span>
+            {frameContextMenu.frame.hasFrameImage ? "Replace image" : "Add image"}
+          </button>
+        </div>
+      )}
       {crop.isCropping ? (
         <CropActionBar
           onCancel={crop.cancelCrop}
           onReset={crop.resetCrop}
           onDone={crop.doneCrop}
+        />
+      ) : frameEditing.isEditing ? (
+        <FrameEditActionBar
+          zoom={frameEditing.zoom}
+          onZoomChange={frameEditing.setZoom}
+          onCancel={frameEditing.cancel}
+          onReplace={() => requestFrameReplacement(frameEditing.frame)}
+          onDone={frameEditing.done}
         />
       ) : (
         <>
@@ -411,6 +718,8 @@ function CanvasArea({
               selectedObject={selection.object}
               onSelectionChange={handleSelectionChange}
               onCrop={crop.startCrop}
+              onEditFrame={frameEditing.start}
+              onReplaceFrame={requestFrameReplacement}
               history={history}
             />
           </div>
@@ -419,6 +728,8 @@ function CanvasArea({
             selectedObject={selection.object}
             onSelectionChange={handleSelectionChange}
             onCrop={crop.startCrop}
+            onEditFrame={frameEditing.start}
+            onReplaceFrame={requestFrameReplacement}
             history={history}
           />
         </>
@@ -473,7 +784,7 @@ function CanvasArea({
         {isAssetDragOver && (
           <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center bg-blue-600/10 backdrop-blur-[1px]">
             <div className="rounded-2xl bg-slate-950/85 px-5 py-3 text-sm font-semibold text-white shadow-xl">
-              Drop to add this asset
+              {dragMessage}
             </div>
           </div>
         )}

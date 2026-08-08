@@ -96,7 +96,11 @@ export class CanvasHistoryManager {
       });
     };
     this.handleObjectModified = (event) => {
-      if (!isHistoryObject(event.target) || event.target.cropModeActive) return;
+      if (
+        !isHistoryObject(event.target) ||
+        event.target.cropModeActive ||
+        event.target._designflowFrameDropTransaction
+      ) return;
       this.record(getTransformAction(event));
     };
     this.handleTextEditingExited = (event) => {
