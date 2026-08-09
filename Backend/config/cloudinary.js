@@ -15,7 +15,7 @@ cloudinary.config({
   secure: true,
 });
 
-export const uploadImageBuffer = (buffer) => {
+const ensureCloudinaryConfiguration = () => {
   if (
     !process.env.CLOUDINARY_CLOUD_NAME ||
     !process.env.CLOUDINARY_API_KEY ||
@@ -25,12 +25,17 @@ export const uploadImageBuffer = (buffer) => {
     error.statusCode = 500;
     throw error;
   }
+};
+
+export const uploadImageBuffer = (buffer, options = {}) => {
+  ensureCloudinaryConfiguration();
 
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder: "designflow/projects",
         resource_type: "image",
+        ...options,
       },
       (error, result) => {
         if (error) {
@@ -46,6 +51,25 @@ export const uploadImageBuffer = (buffer) => {
     );
 
     uploadStream.end(buffer);
+  });
+};
+
+export const uploadThumbnailBuffer = (buffer, projectId) =>
+  uploadImageBuffer(buffer, {
+    folder: "designflow/thumbnails",
+    public_id: `project-${projectId}`,
+    format: "webp",
+    overwrite: true,
+    invalidate: true,
+    resource_type: "image",
+  });
+
+export const deleteImageByPublicId = async (publicId) => {
+  if (!publicId) return null;
+  ensureCloudinaryConfiguration();
+  return cloudinary.uploader.destroy(publicId, {
+    resource_type: "image",
+    invalidate: true,
   });
 };
 

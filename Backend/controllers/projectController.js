@@ -1,7 +1,11 @@
 import Project from "../models/Project.js";
 import asyncHandler from "../middleware/asyncHandler.js";
 import mongoose from "mongoose";
-import { uploadImageBuffer } from "../config/cloudinary.js";
+import {
+  deleteImageByPublicId,
+  uploadImageBuffer,
+  uploadThumbnailBuffer,
+} from "../config/cloudinary.js";
 
 const isValidProjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 //
@@ -96,6 +100,12 @@ export const deleteProject = asyncHandler(async (req, res) => {
     return res.status(404).json({
       success: false,
       message: "Project not found",
+    });
+  }
+
+  if (project.thumbnailPublicId) {
+    deleteImageByPublicId(project.thumbnailPublicId).catch((error) => {
+      console.warn("Unable to remove deleted project thumbnail", error);
     });
   }
 
@@ -247,6 +257,94 @@ export const uploadProjectImage = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: "Image uploaded successfully",
+    project,
+  });
+});
+
+//
+// !!==================== Project-thumbnail ================!!
+
+export const uploadProjectThumbnail = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!isValidProjectId(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid project id",
+    });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({
+      success: false,
+      message: "A thumbnail image is required",
+    });
+  }
+
+  // Resolve ownership before uploading. This prevents an authenticated user
+  // from writing previews for a project they do not own.
+  const project = await Project.findOne({
+    _id: id,
+    owner: req.user._id,
+  });
+
+  if (!project) {
+    return res.status(404).json({
+      success: false,
+      message: "Project not found",
+    });
+  }
+
+  // A stable Cloudinary public ID replaces the prior preview on every Save,
+  // preventing one orphaned image per project revision.
+  const uploadResult = await uploadThumbnailBuffer(req.file.buffer, project._id);
+  project.thumbnail = uploadResult.secure_url;
+  project.thumbnailPublicId = uploadResult.public_id;
+  await project.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Project thumbnail updated successfully",
+    project,
+  });
+});
+
+export const clearProjectThumbnail = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!isValidProjectId(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid project id",
+    });
+  }
+
+  const project = await Project.findOne({
+    _id: id,
+    owner: req.user._id,
+  });
+
+  if (!project) {
+    return res.status(404).json({
+      success: false,
+      message: "Project not found",
+    });
+  }
+
+  const previousPublicId = project.thumbnailPublicId;
+  project.thumbnail = "";
+  project.thumbnailPublicId = "";
+  await project.save();
+
+  if (previousPublicId) {
+    deleteImageByPublicId(previousPublicId).catch((error) => {
+      console.warn("Unable to remove cleared project thumbnail", error);
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Project thumbnail cleared successfully",
     project,
   });
 });

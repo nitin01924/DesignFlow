@@ -58,3 +58,24 @@ export const saveProjectCanvas = async (projectId, canvasData, dimensions) => {
 
   return result.project;
 };
+
+export const uploadProjectThumbnail = async (projectId, thumbnail) => {
+  const formData = new FormData();
+  const extension = thumbnail.type === "image/png" ? "png" : "webp";
+  formData.append("thumbnail", thumbnail, `project-thumbnail.${extension}`);
+
+  const result = await apiRequest(`/api/projects/${projectId}/thumbnail`, {
+    method: "POST",
+    body: formData,
+  });
+
+  return result.project;
+};
+
+export const clearProjectThumbnail = async (projectId) => {
+  const result = await apiRequest(`/api/projects/${projectId}/thumbnail`, {
+    method: "DELETE",
+  });
+
+  return result.project;
+};

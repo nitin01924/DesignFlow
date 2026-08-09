@@ -1,12 +1,13 @@
 import multer from "multer";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const MAX_THUMBNAIL_SIZE = 3 * 1024 * 1024;
 
-const upload = multer({
+const createImageUpload = (fileSize) => multer({
   // Memory storage avoids writing temporary user files to the application server.
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: MAX_IMAGE_SIZE,
+    fileSize,
     files: 1,
   },
   fileFilter: (req, file, callback) => {
@@ -19,24 +20,40 @@ const upload = multer({
   },
 });
 
-export const uploadProjectImage = (req, res, next) => {
-  upload.single("image")(req, res, (error) => {
-    if (!error) {
-      next();
-      return;
-    }
+const projectImageUpload = createImageUpload(MAX_IMAGE_SIZE);
+const thumbnailUpload = createImageUpload(MAX_THUMBNAIL_SIZE);
 
-    error.statusCode = 400;
+const receiveSingleImage = (upload, fieldName, sizeMessage) =>
+  (req, res, next) => {
+    upload.single(fieldName)(req, res, (error) => {
+      if (!error) {
+        next();
+        return;
+      }
 
-    if (error.code === "LIMIT_FILE_SIZE") {
-      error.message = "Image must be 10 MB or smaller";
-    } else if (
-      error.code === "LIMIT_FILE_COUNT" ||
-      error.code === "LIMIT_UNEXPECTED_FILE"
-    ) {
-      error.message = "Only one image can be uploaded";
-    }
+      error.statusCode = 400;
 
-    next(error);
-  });
-};
+      if (error.code === "LIMIT_FILE_SIZE") {
+        error.message = sizeMessage;
+      } else if (
+        error.code === "LIMIT_FILE_COUNT" ||
+        error.code === "LIMIT_UNEXPECTED_FILE"
+      ) {
+        error.message = "Only one image can be uploaded";
+      }
+
+      next(error);
+    });
+  };
+
+export const uploadProjectImage = receiveSingleImage(
+  projectImageUpload,
+  "image",
+  "Image must be 10 MB or smaller",
+);
+
+export const uploadProjectThumbnail = receiveSingleImage(
+  thumbnailUpload,
+  "thumbnail",
+  "Thumbnail must be 3 MB or smaller",
+);

@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { saveProjectCanvas } from "../services/projectService";
+import {
+  clearProjectThumbnail,
+  saveProjectCanvas,
+  uploadProjectThumbnail,
+} from "../services/projectService";
 import { serializeCanvas } from "../components/editor/history/canvasSerialization.js";
+import { createProjectThumbnail } from "../utils/projectThumbnail.js";
+
+const hasStoredThumbnail = (project) =>
+  Boolean(project?.thumbnail && project.thumbnail !== "https://...");
 
 export function useProjectSave({ projectId, canvas, onSaved, disabled = false }) {
   const [saveStatus, setSaveStatus] = useState("saved");
@@ -14,10 +22,37 @@ export function useProjectSave({ projectId, canvas, onSaved, disabled = false })
 
     try {
       const canvasData = serializeCanvas(canvas);
-      const updatedProject = await saveProjectCanvas(projectId, canvasData, {
+      // Capture the exact visual state represented by canvasData. Encoding can
+      // continue while the authoritative canvas document is saved.
+      const thumbnailTask = createProjectThumbnail(canvas).then(
+        (thumbnail) => ({ thumbnail, error: null }),
+        (error) => ({ thumbnail: null, error }),
+      );
+      let updatedProject = await saveProjectCanvas(projectId, canvasData, {
         width: canvas.getWidth(),
         height: canvas.getHeight(),
       });
+
+      try {
+        const { thumbnail, error } = await thumbnailTask;
+        if (error) throw error;
+
+        if (thumbnail) {
+          updatedProject = await uploadProjectThumbnail(projectId, thumbnail);
+        } else if (hasStoredThumbnail(updatedProject)) {
+          updatedProject = await clearProjectThumbnail(projectId);
+        }
+      } catch (thumbnailError) {
+        // A thumbnail is derived data. Never roll back or report a failed Save
+        // after the Fabric document has already persisted successfully.
+        if (import.meta.env.DEV) {
+          console.warn(
+            "DesignFlow saved the project, but could not update its thumbnail.",
+            thumbnailError,
+          );
+        }
+      }
+
       setSaveStatus("saved");
       onSaved?.(updatedProject);
     } catch (error) {

@@ -16,7 +16,12 @@ const projectSchema = new mongoose.Schema(
     thumbnail: {
       type: String,
       trim: true,
-      default: "https://...",
+      default: "",
+    },
+    thumbnailPublicId: {
+      type: String,
+      trim: true,
+      default: "",
     },
     canvasImage: {
       type: String,

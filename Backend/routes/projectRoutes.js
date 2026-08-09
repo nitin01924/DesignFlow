@@ -1,15 +1,20 @@
 import express from "express";
 import {
   createProject,
+  clearProjectThumbnail,
   deleteProject,
   getProjectById,
   getProjects,
   renameProject,
   saveProjectCanvas,
   uploadProjectImage,
+  uploadProjectThumbnail,
 } from "../controllers/projectController.js";
 import { protect } from "../middleware/authMiddleware.js";
-import { uploadProjectImage as receiveProjectImage } from "../middleware/uploadMiddleware.js";
+import {
+  uploadProjectImage as receiveProjectImage,
+  uploadProjectThumbnail as receiveProjectThumbnail,
+} from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
@@ -18,6 +23,10 @@ router.use(protect);
 
 router.route("/").get(getProjects).post(createProject);
 router.post("/:id/upload", receiveProjectImage, uploadProjectImage);
+router
+  .route("/:id/thumbnail")
+  .post(receiveProjectThumbnail, uploadProjectThumbnail)
+  .delete(clearProjectThumbnail);
 router.put("/:id/canvas", saveProjectCanvas);
 router
   .route("/:id")
