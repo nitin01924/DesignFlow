@@ -4,6 +4,11 @@ import Button from "./Button";
 const DEFAULT_THUMBNAIL =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='400' viewBox='0 0 640 400'%3E%3Crect width='640' height='400' fill='%23f1f5f9'/%3E%3Cpath d='M118 291h404L397 149l-89 101-57-65z' fill='%23cbd5e1'/%3E%3Ccircle cx='217' cy='136' r='42' fill='%2394a3b8'/%3E%3C/svg%3E";
 
+const isUsablePreview = (source) =>
+  typeof source === "string" &&
+  source.trim() !== "" &&
+  source !== "https://...";
+
 const formatUpdatedDate = (date) => {
   if (!date) return "Updated recently";
 
@@ -48,9 +53,13 @@ function ProjectThumbnail({ source, title }) {
 }
 
 function ProjectCard({ project, onOpen, onRename, onDelete }) {
-  const projectThumbnail =
-    project.thumbnail && project.thumbnail !== "https://..."
-      ? project.thumbnail
+  // Older projects may have a saved upload but no generated composite preview.
+  // Prefer the full design thumbnail, then show that project image until the
+  // next Save backfills the composite thumbnail.
+  const projectThumbnail = isUsablePreview(project.thumbnail)
+    ? project.thumbnail
+    : isUsablePreview(project.canvasImage)
+      ? project.canvasImage
       : null;
   const handleKeyDown = (event) => {
     if (event.key === "Enter" || event.key === " ") {

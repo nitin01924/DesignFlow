@@ -2,6 +2,18 @@ import dotenv from "dotenv";
 import { fileURLToPath } from "node:url";
 import { v2 as cloudinary } from "cloudinary";
 
+const THUMBNAIL_UPLOAD_ATTEMPTS = 3;
+const THUMBNAIL_RETRY_DELAY_MS = 250;
+const RETRYABLE_CLOUDINARY_CODES = new Set([
+  408,
+  429,
+  499,
+  500,
+  502,
+  503,
+  504,
+]);
+
 // Resolve the backend environment file from this module instead of process.cwd(),
 // so credentials load whether the server starts inside Backend or from the repo root.
 dotenv.config({
@@ -54,15 +66,46 @@ export const uploadImageBuffer = (buffer, options = {}) => {
   });
 };
 
-export const uploadThumbnailBuffer = (buffer, projectId) =>
-  uploadImageBuffer(buffer, {
-    folder: "designflow/thumbnails",
-    public_id: `project-${projectId}`,
-    format: "webp",
-    overwrite: true,
-    invalidate: true,
-    resource_type: "image",
+const isRetryableThumbnailUpload = (error) => {
+  const statusCode = Number(error?.cause?.http_code || error?.statusCode);
+  return !statusCode || RETRYABLE_CLOUDINARY_CODES.has(statusCode);
+};
+
+const waitForThumbnailRetry = (attempt) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, THUMBNAIL_RETRY_DELAY_MS * attempt);
   });
+
+export const uploadThumbnailBuffer = async (buffer, projectId) => {
+  let lastError;
+
+  // Preview uploads are derived and idempotent because every project uses one
+  // stable public ID. Retrying only transient provider failures prevents a
+  // momentary Cloudinary timeout from leaving a saved design without a card.
+  for (let attempt = 1; attempt <= THUMBNAIL_UPLOAD_ATTEMPTS; attempt += 1) {
+    try {
+      return await uploadImageBuffer(buffer, {
+        folder: "designflow/thumbnails",
+        public_id: `project-${projectId}`,
+        format: "webp",
+        overwrite: true,
+        invalidate: true,
+        resource_type: "image",
+      });
+    } catch (error) {
+      lastError = error;
+      if (
+        attempt === THUMBNAIL_UPLOAD_ATTEMPTS ||
+        !isRetryableThumbnailUpload(error)
+      ) {
+        throw error;
+      }
+      await waitForThumbnailRetry(attempt);
+    }
+  }
+
+  throw lastError;
+};
 
 export const deleteImageByPublicId = async (publicId) => {
   if (!publicId) return null;
