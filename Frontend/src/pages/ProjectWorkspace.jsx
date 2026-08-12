@@ -13,6 +13,7 @@ import ExportDialog from "../components/editor/export/ExportDialog";
 import { useCanvasExport } from "../hooks/useCanvasExport";
 import { useCanvasHistory } from "../components/editor/history/useCanvasHistory";
 import { replaceFrameImage } from "../components/editor/frames/frameCommands.js";
+import { uploadImageAsset } from "../services/imageLibraryService.js";
 
 function ProjectWorkspace({ user }) {
   // useParams reads dynamic values from the route, so /project/:id gives us this project's id.
@@ -194,6 +195,20 @@ function ProjectWorkspace({ user }) {
     }
   };
 
+  const handleLibraryImageUpload = useCallback(
+    async (file) => {
+      try {
+        setIsUploading(true);
+        const asset = await uploadImageAsset(id, file);
+        toast.success("Image added to your library");
+        return asset;
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [id],
+  );
+
   const handleReplaceFrameImage = useCallback(
     async (frame, file) => {
       if (
@@ -297,6 +312,7 @@ function ProjectWorkspace({ user }) {
               saveStatus={saveStatus}
               onAddText={handleAddText}
               onInsertAsset={handleInsertAsset}
+              onUploadImage={handleLibraryImageUpload}
               onExport={() => setIsExportDialogOpen(true)}
               isExporting={isExporting}
               isEditingDisabled={isEditorBusy}
@@ -310,6 +326,7 @@ function ProjectWorkspace({ user }) {
                 isUploading={isUploading}
                 onAddText={handleAddText}
                 onInsertAsset={handleInsertAsset}
+                onUploadImage={handleLibraryImageUpload}
                 disabled={isEditorBusy}
               />
               {/* The workspace provides project data; CanvasArea owns all Fabric state and interactions. */}

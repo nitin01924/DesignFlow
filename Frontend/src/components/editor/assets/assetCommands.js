@@ -3,6 +3,7 @@ import { getUniqueLayerName } from "../layers/layerUtils.js";
 import { resolveAsset } from "./assetRegistry.js";
 import { createFrameOnCanvas } from "../frames/frameCommands.js";
 import { createShapeOnCanvas } from "../shapes/shapeCommands.js";
+import { createLibraryImageOnCanvas } from "../images/imageCommands.js";
 
 const DEFAULT_ICON_COLOR = "#111827";
 
@@ -100,6 +101,9 @@ const inserters = {
 
 export const insertAssetIntoCanvas = async (canvas, descriptor, options) => {
   if (!canvas || !descriptor) return null;
+  if (descriptor.type === "image") {
+    return createLibraryImageOnCanvas(canvas, descriptor, options);
+  }
   const asset = await resolveAsset(descriptor);
   const insert = asset && inserters[asset.type];
   if (!asset || !insert) throw new Error("This asset type is not supported yet.");

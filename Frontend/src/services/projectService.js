@@ -1,4 +1,5 @@
 import { apiRequest } from "../utils/api";
+import { uploadImageAssetRequest } from "./imageLibraryService.js";
 
 export const getProjects = async () => {
   const result = await apiRequest("/api/projects");
@@ -35,14 +36,7 @@ export const deleteProject = async (projectId) => {
 };
 
 export const uploadProjectImage = async (projectId, image) => {
-  const formData = new FormData();
-  formData.append("image", image);
-
-  const result = await apiRequest(`/api/projects/${projectId}/upload`, {
-    method: "POST",
-    body: formData,
-  });
-
+  const result = await uploadImageAssetRequest(projectId, image);
   return result.project;
 };
 

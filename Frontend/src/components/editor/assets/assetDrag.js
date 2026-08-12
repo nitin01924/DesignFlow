@@ -11,6 +11,10 @@ export const writeAssetDragData = (dataTransfer, asset) => {
       type: asset.type,
       sectionId: asset.sectionId,
       label: asset.label,
+      sourceUrl: asset.sourceUrl,
+      width: asset.width,
+      height: asset.height,
+      originalFilename: asset.originalFilename,
     }),
   );
 };

@@ -1,7 +1,9 @@
 import { lazy, Suspense, useRef, useState } from "react";
 import TextQuickActions from "./text/TextQuickActions";
+import { IMAGE_UPLOAD_ACCEPT } from "./images/imageValidation.js";
 
 const AssetLibraryPanel = lazy(() => import("./assets/AssetLibraryPanel.jsx"));
+const ImageLibraryPanel = lazy(() => import("./images/ImageLibraryPanel.jsx"));
 
 const tools = [
   {
@@ -29,14 +31,14 @@ function EditorSidebar({
   isUploading,
   onAddText,
   onInsertAsset,
+  onUploadImage,
   disabled = false,
 }) {
   const fileInputRef = useRef(null);
   const [activeTool, setActiveTool] = useState(null);
 
   const handleToolClick = (tool) => {
-    // Upload starts in the tools sidebar because it is an editor action, just like
-    // the text, shape, image, and template tools that will be implemented later.
+    // Direct upload remains available alongside the reusable Images library.
     if (tool.label === "Upload" && !isUploading) {
       fileInputRef.current?.click();
       setActiveTool(null);
@@ -46,6 +48,8 @@ function EditorSidebar({
       setActiveTool((current) => (current === "Assets" ? null : "Assets"));
     } else if (tool.label === "Shapes") {
       setActiveTool((current) => (current === "Shapes" ? null : "Shapes"));
+    } else if (tool.label === "Images") {
+      setActiveTool((current) => (current === "Images" ? null : "Images"));
     }
   };
 
@@ -63,7 +67,7 @@ function EditorSidebar({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept={IMAGE_UPLOAD_ACCEPT}
         onChange={handleFileChange}
         className="sr-only"
         tabIndex={-1}
@@ -85,12 +89,15 @@ function EditorSidebar({
                     ? "Add text"
                     : tool.label === "Shapes"
                       ? "Add vector shapes"
-                      : `${tool.label} tools coming soon`
+                      : tool.label === "Images"
+                        ? "Browse uploaded images"
+                        : `${tool.label} tools coming soon`
             }
             aria-pressed={
               tool.label === "Text" ||
               tool.label === "Assets" ||
-              tool.label === "Shapes"
+              tool.label === "Shapes" ||
+              tool.label === "Images"
                 ? activeTool === tool.label
                 : undefined
             }
@@ -147,6 +154,24 @@ function EditorSidebar({
               sectionId={activeTool === "Shapes" ? "shapes" : undefined}
               onInsertAsset={onInsertAsset}
               onClose={() => setActiveTool(null)}
+            />
+          </Suspense>
+        </section>
+      )}
+      {activeTool === "Images" && (
+        <section className="absolute inset-y-0 left-full w-80 overflow-hidden border-r border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-950">
+          <Suspense
+            fallback={
+              <div className="grid h-full place-items-center text-sm text-slate-400">
+                Loading images…
+              </div>
+            }
+          >
+            <ImageLibraryPanel
+              onUploadImage={onUploadImage}
+              onInsertAsset={onInsertAsset}
+              onClose={() => setActiveTool(null)}
+              isUploading={isUploading}
             />
           </Suspense>
         </section>

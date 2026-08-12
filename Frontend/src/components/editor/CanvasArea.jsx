@@ -16,6 +16,7 @@ import {
   hasAssetDragData,
   readAssetDragData,
 } from "./assets/assetDrag.js";
+import { IMAGE_UPLOAD_ACCEPT } from "./images/imageValidation.js";
 
 const fitImageToCanvas = (image, canvas) => {
   const imageWidth = image.width || 1;
@@ -654,7 +655,7 @@ function CanvasArea({
       <input
         ref={frameReplaceInputRef}
         type="file"
-        accept="image/*"
+        accept={IMAGE_UPLOAD_ACCEPT}
         onChange={(event) => void handleFrameReplacementFile(event)}
         className="sr-only"
         tabIndex={-1}
