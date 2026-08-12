@@ -26,6 +26,8 @@ const DESIGNFLOW_OBJECT_PROPERTIES = [
   "assetId",
   "assetLibrary",
   "assetColor",
+  "shapeKind",
+  "shapePoints",
   "frameKind",
   "frameAssetId",
   "frameImageSrc",

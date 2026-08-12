@@ -1,5 +1,6 @@
 import { ActiveSelection } from "fabric";
 import { serializeCanvas } from "./canvasSerialization.js";
+import { initializeLayerObject } from "../layers/layerUtils.js";
 
 const DEFAULT_MAX_STATES = 100;
 let fallbackId = 0;
@@ -398,6 +399,7 @@ export class CanvasHistoryManager {
       const scaleY = canvasHeight / Math.max(1, entry.height || canvasHeight);
 
       this.canvas.getObjects().forEach((object) => {
+        initializeLayerObject(this.canvas, object);
         object.set({
           left: (object.left || 0) * scaleX,
           top: (object.top || 0) * scaleY,
@@ -405,15 +407,6 @@ export class CanvasHistoryManager {
           scaleY: (object.scaleY || 1) * scaleY,
         });
 
-        if (object.type === "image") {
-          const locked = Boolean(object.aspectRatioLocked);
-          object.setControlsVisibility({
-            mt: !locked,
-            mb: !locked,
-            ml: !locked,
-            mr: !locked,
-          });
-        }
         object.setCoords();
       });
 
