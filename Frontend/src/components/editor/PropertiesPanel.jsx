@@ -4,6 +4,7 @@ import MobileImagePropertiesPanel from "./properties/MobileImagePropertiesPanel"
 import TextPropertiesPanel from "./properties/TextPropertiesPanel";
 import IconPropertiesPanel from "./properties/IconPropertiesPanel";
 import FramePropertiesPanel from "./properties/FramePropertiesPanel";
+import ShapePropertiesPanel from "./properties/ShapePropertiesPanel";
 import LayersPanel from "./layers/LayersPanel";
 import { useBottomSheet } from "./mobile/useBottomSheet";
 
@@ -19,6 +20,13 @@ const mobilePropertyPanelByType = {
   "i-text": TextPropertiesPanel,
   text: TextPropertiesPanel,
   textbox: TextPropertiesPanel,
+};
+
+const getObjectPropertiesPanel = (object, panelsByType) => {
+  if (object?.assetType === "frame") return FramePropertiesPanel;
+  if (object?.assetType === "icon") return IconPropertiesPanel;
+  if (object?.assetType === "shape") return ShapePropertiesPanel;
+  return object ? panelsByType[object.type] : null;
 };
 
 const inspectorTabs = [
@@ -127,22 +135,14 @@ function PropertiesPanel({
   const [mobileTab, setMobileTab] = useState("layers");
   const bottomSheet = useBottomSheet("collapsed");
   const selectedObject = editorState?.selectedObject;
-  const isIcon = selectedObject?.assetType === "icon";
-  const isFrame = selectedObject?.assetType === "frame";
-  const SelectedObjectPanel = isFrame
-    ? FramePropertiesPanel
-    : isIcon
-      ? IconPropertiesPanel
-      : selectedObject
-        ? propertyPanelByType[selectedObject.type]
-        : null;
-  const MobileSelectedObjectPanel = isFrame
-    ? FramePropertiesPanel
-    : isIcon
-      ? IconPropertiesPanel
-      : selectedObject
-        ? mobilePropertyPanelByType[selectedObject.type]
-        : null;
+  const SelectedObjectPanel = getObjectPropertiesPanel(
+    selectedObject,
+    propertyPanelByType,
+  );
+  const MobileSelectedObjectPanel = getObjectPropertiesPanel(
+    selectedObject,
+    mobilePropertyPanelByType,
+  );
 
   const changeMobileTab = (tab) => {
     setMobileTab(tab);
