@@ -44,6 +44,8 @@ function EditorSidebar({
       setActiveTool((current) => (current === "Text" ? null : "Text"));
     } else if (tool.label === "Assets") {
       setActiveTool((current) => (current === "Assets" ? null : "Assets"));
+    } else if (tool.label === "Shapes") {
+      setActiveTool((current) => (current === "Shapes" ? null : "Shapes"));
     }
   };
 
@@ -81,10 +83,14 @@ function EditorSidebar({
                   ? "Browse reusable assets"
                   : tool.label === "Text"
                     ? "Add text"
-                    : `${tool.label} tools coming soon`
+                    : tool.label === "Shapes"
+                      ? "Add vector shapes"
+                      : `${tool.label} tools coming soon`
             }
             aria-pressed={
-              tool.label === "Text" || tool.label === "Assets"
+              tool.label === "Text" ||
+              tool.label === "Assets" ||
+              tool.label === "Shapes"
                 ? activeTool === tool.label
                 : undefined
             }
@@ -127,7 +133,7 @@ function EditorSidebar({
           />
         </section>
       )}
-      {activeTool === "Assets" && (
+      {(activeTool === "Assets" || activeTool === "Shapes") && (
         <section className="absolute inset-y-0 left-full w-80 overflow-hidden border-r border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-950">
           <Suspense
             fallback={
@@ -137,6 +143,8 @@ function EditorSidebar({
             }
           >
             <AssetLibraryPanel
+              key={activeTool}
+              sectionId={activeTool === "Shapes" ? "shapes" : undefined}
               onInsertAsset={onInsertAsset}
               onClose={() => setActiveTool(null)}
             />

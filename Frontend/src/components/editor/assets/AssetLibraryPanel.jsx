@@ -63,13 +63,52 @@ function FramePreview({ asset, className = "size-8" }) {
   );
 }
 
+const shapePreviewPaths = {
+  rectangle: <rect x="3" y="5" width="18" height="14" />,
+  roundedRectangle: <rect x="3" y="5" width="18" height="14" rx="4" />,
+  circle: <circle cx="12" cy="12" r="8" />,
+  ellipse: <ellipse cx="12" cy="12" rx="9" ry="6" />,
+  triangle: <path d="M12 3 22 20H2Z" />,
+  line: <path d="M3 17 21 7" />,
+  arrow: <path d="M3 12h15m-5-5 5 5-5 5" />,
+  star: <path d="m12 2.7 2.8 5.7 6.3.9-4.6 4.5 1.1 6.3-5.6-3-5.6 3 1.1-6.3-4.6-4.5 6.3-.9Z" />,
+  hexagon: <path d="m7 3 10 0 5 9-5 9H7l-5-9Z" />,
+  diamond: <path d="m12 2 9 10-9 10-9-10Z" />,
+};
+
+function ShapePreview({ asset, className = "size-9" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="currentColor"
+      fillOpacity={asset.kind === "line" || asset.kind === "arrow" ? "0" : "0.14"}
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {shapePreviewPaths[asset.kind] || shapePreviewPaths.rectangle}
+    </svg>
+  );
+}
+
 function AssetPreview({ asset, className }) {
-  return asset.type === "frame" ? (
+  return asset.type === "shape" ? (
+    <ShapePreview asset={asset} className={className} />
+  ) : asset.type === "frame" ? (
     <FramePreview asset={asset} className={className} />
   ) : (
     <IconPreview asset={asset} className={className} />
   );
 }
+
+const getPreviewClassName = (asset, mobile) => {
+  if (asset.type === "shape") return mobile ? "size-9" : "size-10";
+  if (asset.type === "frame") return mobile ? "size-8" : "size-10";
+  return mobile ? "size-6" : "size-7";
+};
 
 function LoadingGrid() {
   return (
@@ -84,8 +123,23 @@ function LoadingGrid() {
   );
 }
 
-function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
-  const [activeSection, setActiveSection] = useState(assetSections[0].id);
+function AssetLibraryPanel({
+  onInsertAsset,
+  onClose,
+  mobile = false,
+  initialSection,
+  sectionId,
+}) {
+  const availableSections = useMemo(
+    () =>
+      sectionId
+        ? assetSections.filter((section) => section.id === sectionId)
+        : assetSections,
+    [sectionId],
+  );
+  const [activeSection, setActiveSection] = useState(
+    sectionId || initialSection || availableSections[0]?.id || assetSections[0].id,
+  );
   const [assets, setAssets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -140,7 +194,8 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
   const activeSectionDetails = assetSections.find(
     (section) => section.id === activeSection,
   );
-  const assetNoun = activeSectionDetails?.assetType === "frame" ? "frame" : "icon";
+  const assetNoun = activeSectionDetails?.assetType || "asset";
+  const showsShapeNames = activeSectionDetails?.assetType === "shape";
 
   useEffect(() => {
     const sentinel = loadMoreRef.current;
@@ -202,10 +257,12 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-              Assets
+              {sectionId ? activeSectionDetails?.label : "Assets"}
             </h2>
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-              Add reusable vectors to your design
+              {sectionId
+                ? activeSectionDetails?.description
+                : "Add reusable vectors to your design"}
             </p>
           </div>
           <button
@@ -220,31 +277,37 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
           </button>
         </div>
 
-        <div className="mt-4 flex gap-2" role="tablist" aria-label="Asset categories">
-          {assetSections.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              role="tab"
-              aria-selected={activeSection === section.id}
-              onClick={() => {
-                if (section.id === activeSection) return;
-                setActiveSection(section.id);
-                setAssets([]);
-                setIsLoading(true);
-                setLoadError("");
-                setVisibleCount(INITIAL_RESULT_COUNT);
-              }}
-              className={`rounded-xl px-3 py-2 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-blue-600 ${
-                activeSection === section.id
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
-              }`}
-            >
-              {section.label}
-            </button>
-          ))}
-        </div>
+        {availableSections.length > 1 && (
+          <div
+            className="mt-4 flex gap-2"
+            role="tablist"
+            aria-label="Asset categories"
+          >
+            {availableSections.map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                role="tab"
+                aria-selected={activeSection === section.id}
+                onClick={() => {
+                  if (section.id === activeSection) return;
+                  setActiveSection(section.id);
+                  setAssets([]);
+                  setIsLoading(true);
+                  setLoadError("");
+                  setVisibleCount(INITIAL_RESULT_COUNT);
+                }}
+                className={`rounded-xl px-3 py-2 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-blue-600 ${
+                  activeSection === section.id
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                }`}
+              >
+                {section.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <label className="relative mt-3 block">
           <span className="sr-only">Search {assetNoun}s</span>
@@ -299,7 +362,13 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
         ) : filteredAssets.length ? (
           <>
             <div
-              className={`grid gap-2 p-4 ${mobile ? "grid-cols-5" : "grid-cols-4"}`}
+              className={`grid gap-2 p-4 ${
+                showsShapeNames
+                  ? "grid-cols-2"
+                  : mobile
+                    ? "grid-cols-5"
+                    : "grid-cols-4"
+              }`}
               role="group"
               aria-label={`Available ${assetNoun}s`}
             >
@@ -326,30 +395,33 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
                     disabled={Boolean(pendingAssetId)}
                     title={`Add ${asset.label}`}
                     aria-label={`Add ${asset.label}`}
-                    className={`group relative aspect-square touch-manipulation rounded-2xl border bg-white text-slate-700 shadow-sm transition-[transform,border-color,box-shadow,background-color] duration-150 hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 hover:shadow-md active:scale-95 disabled:cursor-wait dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-700 dark:hover:bg-blue-950/50 ${
+                    className={`group relative touch-manipulation rounded-2xl border bg-white text-slate-700 shadow-sm transition-[transform,border-color,box-shadow,background-color] duration-150 hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 hover:shadow-md active:scale-95 disabled:cursor-wait dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-700 dark:hover:bg-blue-950/50 ${
+                      showsShapeNames ? "min-h-24 px-2 pb-2 pt-3" : "aspect-square"
+                    } ${
                       wasInserted
                         ? "scale-95 border-blue-500 bg-blue-50 ring-2 ring-blue-500/25 dark:bg-blue-950/60"
                         : "border-slate-200 dark:border-slate-700"
                     }`}
                   >
-                    <span className="absolute inset-0 grid place-items-center">
+                    <span
+                      className={`grid place-items-center ${
+                        showsShapeNames ? "h-14" : "absolute inset-0"
+                      }`}
+                    >
                       {isPending ? (
                         <span className="size-5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
                       ) : (
                         <AssetPreview
                           asset={asset}
-                          className={
-                            asset.type === "frame"
-                              ? mobile
-                                ? "size-8"
-                                : "size-10"
-                              : mobile
-                                ? "size-6"
-                                : "size-7"
-                          }
+                          className={getPreviewClassName(asset, mobile)}
                         />
                       )}
                     </span>
+                    {showsShapeNames && (
+                      <span className="block truncate text-center text-[11px] font-semibold leading-4">
+                        {asset.label}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -397,7 +469,9 @@ function AssetLibraryPanel({ onInsertAsset, onClose, mobile = false }) {
       <div className="shrink-0 border-t border-slate-100 px-4 py-2.5 text-center text-[10px] text-slate-400 dark:border-slate-800">
         {activeSection === "icons"
           ? "Lucide Icons · Open-source ISC license"
-          : "DesignFlow Frames · Non-destructive image containers"}
+          : activeSection === "frames"
+            ? "DesignFlow Frames · Non-destructive image containers"
+            : "DesignFlow Shapes · Editable Fabric vectors"}
       </div>
     </div>
   );

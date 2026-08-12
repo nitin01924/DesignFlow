@@ -20,6 +20,7 @@ function MobileEditorHeader({
   const fileInputRef = useRef(null);
   const [showTextTools, setShowTextTools] = useState(false);
   const [showAssets, setShowAssets] = useState(false);
+  const [showShapes, setShowShapes] = useState(false);
 
   const handleFileChange = (event) => {
     const [file] = event.target.files;
@@ -100,7 +101,7 @@ function MobileEditorHeader({
         </button>
       </div>
       </div>
-      <div className="grid h-12 grid-cols-3 border-t border-slate-100 px-2 dark:border-slate-800" role="toolbar" aria-label="Add design content">
+      <div className="grid h-12 grid-cols-4 border-t border-slate-100 px-2 dark:border-slate-800" role="toolbar" aria-label="Add design content">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
@@ -121,6 +122,7 @@ function MobileEditorHeader({
           type="button"
           onClick={() => {
             setShowAssets(false);
+            setShowShapes(false);
             setShowTextTools((visible) => !visible);
           }}
           disabled={isEditingDisabled}
@@ -139,6 +141,7 @@ function MobileEditorHeader({
           type="button"
           onClick={() => {
             setShowTextTools(false);
+            setShowShapes(false);
             setShowAssets((visible) => !visible);
           }}
           disabled={isEditingDisabled}
@@ -154,6 +157,27 @@ function MobileEditorHeader({
             <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM17 14l3 6h-6z" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           Assets
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setShowTextTools(false);
+            setShowAssets(false);
+            setShowShapes((visible) => !visible);
+          }}
+          disabled={isEditingDisabled}
+          className={`flex items-center justify-center gap-2 rounded-xl text-xs font-semibold ${
+            showShapes
+              ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
+              : "text-slate-600 active:bg-slate-100 dark:text-slate-300 dark:active:bg-slate-800"
+          }`}
+          aria-label="Add shapes"
+          aria-expanded={showShapes}
+        >
+          <svg viewBox="0 0 24 24" className="size-4.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+            <path d="M4 4h7v7H4zM14 14h6v6h-6zM17 4l3 6h-6z" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Shapes
         </button>
       </div>
       {showTextTools && (
@@ -183,7 +207,7 @@ function MobileEditorHeader({
           />
         </section>
       )}
-      {showAssets && (
+      {(showAssets || showShapes) && (
         <section className="absolute inset-x-0 top-full h-[min(72dvh,38rem)] overflow-hidden rounded-b-3xl border border-t-0 border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-950">
           <Suspense
             fallback={
@@ -193,9 +217,14 @@ function MobileEditorHeader({
             }
           >
             <AssetLibraryPanel
+              key={showShapes ? "shapes" : "assets"}
               mobile
+              sectionId={showShapes ? "shapes" : undefined}
               onInsertAsset={onInsertAsset}
-              onClose={() => setShowAssets(false)}
+              onClose={() => {
+                setShowAssets(false);
+                setShowShapes(false);
+              }}
             />
           </Suspense>
         </section>

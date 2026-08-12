@@ -2,6 +2,7 @@ import { loadSVGFromString, util } from "fabric";
 import { getUniqueLayerName } from "../layers/layerUtils.js";
 import { resolveAsset } from "./assetRegistry.js";
 import { createFrameOnCanvas } from "../frames/frameCommands.js";
+import { createShapeOnCanvas } from "../shapes/shapeCommands.js";
 
 const DEFAULT_ICON_COLOR = "#111827";
 
@@ -94,6 +95,7 @@ const insertIcon = async (canvas, asset, { position, color } = {}) => {
 const inserters = {
   icon: insertIcon,
   frame: createFrameOnCanvas,
+  shape: createShapeOnCanvas,
 };
 
 export const insertAssetIntoCanvas = async (canvas, descriptor, options) => {

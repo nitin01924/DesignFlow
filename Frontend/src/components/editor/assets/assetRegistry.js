@@ -27,6 +27,20 @@ const providers = [
       return catalog.getFrameAsset(assetId);
     },
   },
+  {
+    id: "shapes",
+    label: "Shapes",
+    assetType: "shape",
+    description: "Editable Fabric vector shapes",
+    async load() {
+      const catalog = await import("./shapeCatalog.js");
+      return catalog.shapeAssets;
+    },
+    async resolve(assetId) {
+      const catalog = await import("./shapeCatalog.js");
+      return catalog.getShapeAsset(assetId);
+    },
+  },
 ];
 
 const providersById = new Map(providers.map((provider) => [provider.id, provider]));
