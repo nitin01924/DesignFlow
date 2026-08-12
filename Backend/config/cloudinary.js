@@ -66,6 +66,23 @@ export const uploadImageBuffer = (buffer, options = {}) => {
   });
 };
 
+export const getImageThumbnailUrl = (publicId) => {
+  if (!publicId) return "";
+  ensureCloudinaryConfiguration();
+  return cloudinary.url(publicId, {
+    secure: true,
+    transformation: [
+      {
+        width: 360,
+        height: 360,
+        crop: "limit",
+        quality: "auto:eco",
+        fetch_format: "auto",
+      },
+    ],
+  });
+};
+
 const isRetryableThumbnailUpload = (error) => {
   const statusCode = Number(error?.cause?.http_code || error?.statusCode);
   return !statusCode || RETRYABLE_CLOUDINARY_CODES.has(statusCode);

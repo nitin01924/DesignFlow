@@ -1,4 +1,5 @@
 import Project from "../models/Project.js";
+import ImageAsset from "../models/ImageAsset.js";
 import asyncHandler from "../middleware/asyncHandler.js";
 import mongoose from "mongoose";
 import {
@@ -6,6 +7,10 @@ import {
   uploadImageBuffer,
   uploadThumbnailBuffer,
 } from "../config/cloudinary.js";
+import {
+  createImageAssetData,
+  serializeImageAsset,
+} from "../utils/imageAsset.js";
 
 const isValidProjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 //
@@ -250,14 +255,37 @@ export const uploadProjectImage = asyncHandler(async (req, res) => {
     });
   }
 
-  const uploadResult = await uploadImageBuffer(req.file.buffer);
-  project.canvasImage = uploadResult.secure_url;
-  await project.save();
+  const uploadResult = await uploadImageBuffer(req.file.buffer, {
+    folder: `designflow/assets/${req.user._id}`,
+  });
+  let asset;
+  try {
+    asset = await ImageAsset.create(
+      createImageAssetData({
+        owner: req.user._id,
+        file: req.file,
+        uploadResult,
+      }),
+    );
+  } catch (error) {
+    // A failed database write must not leave an unreferenced Cloudinary asset.
+    deleteImageByPublicId(uploadResult.public_id).catch(() => {});
+    throw error;
+  }
+
+  const libraryOnly = req.body.libraryOnly === "true";
+  if (!libraryOnly) {
+    project.canvasImage = uploadResult.secure_url;
+    await project.save();
+  }
 
   res.status(200).json({
     success: true,
-    message: "Image uploaded successfully",
+    message: libraryOnly
+      ? "Image added to your library"
+      : "Image uploaded successfully",
     project,
+    asset: serializeImageAsset(asset),
   });
 });
 

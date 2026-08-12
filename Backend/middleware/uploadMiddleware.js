@@ -2,6 +2,12 @@ import multer from "multer";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const MAX_THUMBNAIL_SIZE = 3 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+]);
 
 const createImageUpload = (fileSize) => multer({
   // Memory storage avoids writing temporary user files to the application server.
@@ -11,8 +17,8 @@ const createImageUpload = (fileSize) => multer({
     files: 1,
   },
   fileFilter: (req, file, callback) => {
-    if (!file.mimetype.startsWith("image/")) {
-      callback(new Error("Only image files are allowed"));
+    if (!ALLOWED_IMAGE_TYPES.has(file.mimetype)) {
+      callback(new Error("Only JPG, PNG, and WEBP images are supported"));
       return;
     }
 
