@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import imageAssetRoutes from "./routes/imageAssetRoutes.js";
+import templateRoutes from "./routes/templateRoutes.js";
 import connectDB from "./config/db.js";
 import cors from "cors";
 import { errorHandler } from "./middleware/errorMiddleware.js";
@@ -24,6 +25,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/images", imageAssetRoutes);
+app.use("/api/templates", templateRoutes);
 app.use(errorHandler);
 
 app.listen(port, async () => {
