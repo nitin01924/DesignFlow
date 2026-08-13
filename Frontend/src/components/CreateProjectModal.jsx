@@ -43,7 +43,7 @@ function CreateProjectModal({ isOpen, onClose, onCreate }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 dark:bg-black/70">
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:border dark:border-slate-700 dark:bg-slate-900">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">New Project</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Blank Project</h2>
           <button
             type="button"
             onClick={handleClose}
@@ -69,7 +69,7 @@ function CreateProjectModal({ isOpen, onClose, onCreate }) {
               Cancel
             </Button>
             <Button type="submit" loading={isSubmitting}>
-              Create
+              Create Blank Project
             </Button>
           </div>
         </form>

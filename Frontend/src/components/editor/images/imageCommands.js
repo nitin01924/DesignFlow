@@ -91,3 +91,79 @@ export const createLibraryImageOnCanvas = async (
   canvas.requestRenderAll();
   return image;
 };
+
+export const replaceCanvasImageWithLibraryAsset = async (
+  canvas,
+  currentImage,
+  descriptor,
+) => {
+  const sourceUrl = getSourceUrl(descriptor);
+  if (!canvas || currentImage?.type !== "image" || !sourceUrl) return null;
+
+  let replacement;
+  try {
+    replacement = await FabricImage.fromURL(sourceUrl, {
+      crossOrigin: "anonymous",
+    });
+  } catch (error) {
+    throw new Error("Unable to load this replacement image.", { cause: error });
+  }
+
+  const objects = canvas.getObjects();
+  const targetIndex = objects.indexOf(currentImage);
+  if (targetIndex < 0) return null;
+
+  const sourceWidth = Math.max(1, replacement.width || descriptor.width || 1);
+  const sourceHeight = Math.max(1, replacement.height || descriptor.height || 1);
+  const displayedWidth = Math.max(1, currentImage.getScaledWidth());
+  const displayedHeight = Math.max(1, currentImage.getScaledHeight());
+  const scaleDirectionX = (currentImage.scaleX || 1) < 0 ? -1 : 1;
+  const scaleDirectionY = (currentImage.scaleY || 1) < 0 ? -1 : 1;
+
+  replacement.set({
+    left: currentImage.left,
+    top: currentImage.top,
+    originX: currentImage.originX || "center",
+    originY: currentImage.originY || "center",
+    scaleX: (displayedWidth / sourceWidth) * scaleDirectionX,
+    scaleY: (displayedHeight / sourceHeight) * scaleDirectionY,
+    angle: currentImage.angle || 0,
+    opacity: currentImage.opacity ?? 1,
+    name: currentImage.name || descriptor.label || "Image",
+    selectable: true,
+    evented: true,
+    hasControls: true,
+    lockRotation: false,
+    lockScalingX: false,
+    lockScalingY: false,
+    lockScalingFlip: true,
+    aspectRatioLocked: Boolean(currentImage.aspectRatioLocked),
+    lockedAspectRatio: sourceWidth / sourceHeight,
+    touchCornerSize: 44,
+    objectCaching: true,
+    assetType: "image",
+    assetId: descriptor.id,
+    assetLibrary: "user-uploads",
+    originalWidth: sourceWidth,
+    originalHeight: sourceHeight,
+    cropX: 0,
+    cropY: 0,
+    cropWidth: sourceWidth,
+    cropHeight: sourceHeight,
+  });
+  const locked = Boolean(replacement.aspectRatioLocked);
+  replacement.setControlsVisibility({
+    mt: !locked,
+    mb: !locked,
+    ml: !locked,
+    mr: !locked,
+    mtr: true,
+  });
+  replacement.setCoords();
+
+  canvas.remove(currentImage);
+  canvas.insertAt(targetIndex, replacement);
+  canvas.setActiveObject(replacement);
+  canvas.requestRenderAll();
+  return replacement;
+};

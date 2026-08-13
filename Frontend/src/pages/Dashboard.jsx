@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import CreateProjectModal from "../components/CreateProjectModal";
@@ -10,6 +10,11 @@ import {
   getProjects,
   renameProject,
 } from "../services/projectService";
+import { createProjectFromTemplate } from "../services/templateService.js";
+
+const TemplateGalleryModal = lazy(
+  () => import("../components/templates/TemplateGalleryModal.jsx"),
+);
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -19,6 +24,7 @@ function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isTemplateGalleryOpen, setIsTemplateGalleryOpen] = useState(false);
 
   const loadProjects = async () => {
     try {
@@ -66,6 +72,12 @@ function Dashboard() {
     await createProject(title);
     toast.success("Project created");
     await loadProjects();
+  };
+
+  const handleUseTemplate = async (template) => {
+    const project = await createProjectFromTemplate(template.id);
+    toast.success(`Created ${template.name}`);
+    navigate(`/project/${project._id}`);
   };
 
   const handleOpenProject = (project) => {
@@ -117,13 +129,25 @@ function Dashboard() {
             <p className="mt-1 text-gray-500 dark:text-slate-400">Manage your design projects.</p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="rounded bg-blue-600 px-4 py-2 font-semibold text-white transition hover:bg-blue-700"
-          >
-            + New Project
-          </button>
+          <div className="flex flex-col gap-2 min-[420px]:flex-row">
+            <button
+              type="button"
+              onClick={() => setIsTemplateGalleryOpen(true)}
+              className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/70"
+            >
+              <svg viewBox="0 0 24 24" className="size-4.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <path d="M4 4h16v16H4zM4 10h16M10 10v10" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Start from Template
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            >
+              + Blank Project
+            </button>
+          </div>
         </div>
 
         {isLoading && (
@@ -162,6 +186,21 @@ function Dashboard() {
         onClose={() => setIsCreateModalOpen(false)}
         onCreate={handleCreateProject}
       />
+      {isTemplateGalleryOpen && (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/70 text-sm font-medium text-white backdrop-blur-sm">
+              Loading templates…
+            </div>
+          }
+        >
+          <TemplateGalleryModal
+            isOpen
+            onClose={() => setIsTemplateGalleryOpen(false)}
+            onUseTemplate={handleUseTemplate}
+          />
+        </Suspense>
+      )}
     </main>
   );
 }

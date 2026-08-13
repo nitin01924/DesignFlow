@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { getProject, uploadProjectImage } from "../services/projectService";
 import CanvasArea from "../components/editor/CanvasArea";
@@ -14,10 +14,13 @@ import { useCanvasExport } from "../hooks/useCanvasExport";
 import { useCanvasHistory } from "../components/editor/history/useCanvasHistory";
 import { replaceFrameImage } from "../components/editor/frames/frameCommands.js";
 import { uploadImageAsset } from "../services/imageLibraryService.js";
+import { createProjectFromTemplate } from "../services/templateService.js";
+import { replaceCanvasImageWithLibraryAsset } from "../components/editor/images/imageCommands.js";
 
 function ProjectWorkspace({ user }) {
   // useParams reads dynamic values from the route, so /project/:id gives us this project's id.
   const { id } = useParams();
+  const navigate = useNavigate();
 
   // useState stores values that change after render: the project data, loading state, and errors.
   const [project, setProject] = useState(null);
@@ -209,6 +212,15 @@ function ProjectWorkspace({ user }) {
     [id],
   );
 
+  const handleUseTemplate = useCallback(
+    async (template) => {
+      const createdProject = await createProjectFromTemplate(template.id);
+      toast.success(`Created ${template.name}`);
+      navigate(`/project/${createdProject._id}`);
+    },
+    [navigate],
+  );
+
   const handleReplaceFrameImage = useCallback(
     async (frame, file) => {
       if (
@@ -275,6 +287,61 @@ function ProjectWorkspace({ user }) {
     ],
   );
 
+  const replacementTarget =
+    editorState.selectedObject?.assetType === "frame"
+      ? editorState.selectedObject
+      : editorState.selectedObject?.type === "image"
+        ? editorState.selectedObject
+        : null;
+  const replacementTargetLabel = replacementTarget
+    ? `“${replacementTarget.name || (replacementTarget.assetType === "frame" ? "Frame" : "Image")}”`
+    : "";
+
+  const handleReplaceWithLibraryAsset = useCallback(
+    async (descriptor) => {
+      const canvas = editorState.canvas;
+      const target = editorState.selectedObject;
+      if (
+        !canvas ||
+        !target ||
+        target.layerLocked ||
+        !canvas.getObjects().includes(target) ||
+        history.isRestoring ||
+        !history.isReady
+      ) {
+        return null;
+      }
+
+      const isFrame = target.assetType === "frame";
+      const isImage = target.type === "image";
+      if (!isFrame && !isImage) return null;
+
+      const replacement = await executeHistoryAction(
+        {
+          type: isFrame ? "replace-frame-image" : "replace-image",
+          label: isFrame ? "Replace frame image" : "Replace image",
+        },
+        () =>
+          isFrame
+            ? replaceFrameImage(canvas, target, descriptor.sourceUrl)
+            : replaceCanvasImageWithLibraryAsset(canvas, target, descriptor),
+      );
+      if (replacement) {
+        handleEditorStateChange({ canvas, selectedObject: replacement });
+        toast.success(isFrame ? "Frame image replaced" : "Image replaced");
+      }
+      return replacement;
+    },
+    [
+      editorState.canvas,
+      editorState.selectedObject,
+      executeHistoryAction,
+      handleEditorStateChange,
+      history.isReady,
+      history.isRestoring,
+    ],
+  );
+
   return (
     <main className="h-dvh overflow-hidden bg-slate-100 text-slate-900 transition-colors dark:bg-slate-900 dark:text-slate-100 md:h-auto md:min-h-[calc(100vh-73px)] md:overflow-visible">
       <div className="flex h-full items-center justify-center md:min-h-[calc(100vh-73px)]">
@@ -313,6 +380,9 @@ function ProjectWorkspace({ user }) {
               onAddText={handleAddText}
               onInsertAsset={handleInsertAsset}
               onUploadImage={handleLibraryImageUpload}
+              onReplaceImageAsset={handleReplaceWithLibraryAsset}
+              imageReplacementTarget={replacementTargetLabel}
+              onUseTemplate={handleUseTemplate}
               onExport={() => setIsExportDialogOpen(true)}
               isExporting={isExporting}
               isEditingDisabled={isEditorBusy}
@@ -327,6 +397,9 @@ function ProjectWorkspace({ user }) {
                 onAddText={handleAddText}
                 onInsertAsset={handleInsertAsset}
                 onUploadImage={handleLibraryImageUpload}
+                onReplaceImageAsset={handleReplaceWithLibraryAsset}
+                imageReplacementTarget={replacementTargetLabel}
+                onUseTemplate={handleUseTemplate}
                 disabled={isEditorBusy}
               />
               {/* The workspace provides project data; CanvasArea owns all Fabric state and interactions. */}

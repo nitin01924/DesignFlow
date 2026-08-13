@@ -50,6 +50,11 @@ function CanvasArea({
   onInsertAsset,
   onReplaceFrameImage,
 }) {
+  const sourceCanvasWidth = Number(savedCanvasWidth) || 4;
+  const sourceCanvasHeight = Number(savedCanvasHeight) || 3;
+  const canvasAspectRatio = sourceCanvasWidth / sourceCanvasHeight;
+  const hasSavedCanvasDimensions =
+    Number(savedCanvasWidth) > 0 && Number(savedCanvasHeight) > 0;
   const canvasElementRef = useRef(null);
   const canvasContainerRef = useRef(null);
   const fabricCanvasRef = useRef(null);
@@ -179,6 +184,9 @@ function CanvasArea({
     const fabricCanvas = new Canvas(canvasElementRef.current, {
       backgroundColor: "#ffffff",
       selection: true,
+      ...(hasSavedCanvasDimensions
+        ? { width: sourceCanvasWidth, height: sourceCanvasHeight }
+        : {}),
     });
     fabricCanvasRef.current = fabricCanvas;
     setIsHydrated(false);
@@ -353,6 +361,20 @@ function CanvasArea({
       const nextHeight = Math.max(1, Math.round(height));
       const previousSize = lastCanvasSizeRef.current;
 
+      if (hasSavedCanvasDimensions) {
+        // Keep the Fabric document at its saved/native resolution and scale only
+        // its DOM presentation. Pointer mapping remains Fabric-managed while
+        // save, export, crop, and thumbnails retain the intended dimensions.
+        fabricCanvas.setDimensions(
+          { width: nextWidth, height: nextHeight },
+          { cssOnly: true },
+        );
+        lastCanvasSizeRef.current = { width: nextWidth, height: nextHeight };
+        fabricCanvas.calcOffset();
+        fabricCanvas.requestRenderAll();
+        return;
+      }
+
       fabricCanvas.setDimensions({
         width: nextWidth,
         height: nextHeight,
@@ -422,6 +444,9 @@ function CanvasArea({
     handleSelectionChange,
     onEditorStateChange,
     openFrameReplaceDialog,
+    hasSavedCanvasDimensions,
+    sourceCanvasHeight,
+    sourceCanvasWidth,
   ]);
 
   useEffect(() => {
@@ -746,7 +771,12 @@ function CanvasArea({
         onDragOver={handleAssetDragOver}
         onDragLeave={handleAssetDragLeave}
         onDrop={handleAssetDrop}
-        className={`relative aspect-4/3 w-full max-w-3xl overflow-hidden border bg-white text-center shadow-[0_20px_50px_rgba(15,23,42,0.10)] transition-[border-color,box-shadow] dark:shadow-[0_20px_50px_rgba(0,0,0,0.30)] ${
+        style={{
+          aspectRatio: `${sourceCanvasWidth} / ${sourceCanvasHeight}`,
+          width: `min(100%, calc((100dvh - 13rem) * ${canvasAspectRatio}))`,
+          maxHeight: "calc(100dvh - 13rem)",
+        }}
+        className={`relative max-w-3xl shrink-0 overflow-hidden border bg-white text-center shadow-[0_20px_50px_rgba(15,23,42,0.10)] transition-[border-color,box-shadow] dark:shadow-[0_20px_50px_rgba(0,0,0,0.30)] ${
           isAssetDragOver
             ? "border-blue-500 shadow-[0_20px_60px_rgba(37,99,235,0.24)] ring-4 ring-blue-500/20"
             : "border-slate-200 dark:border-slate-700"

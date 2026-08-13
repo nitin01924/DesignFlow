@@ -4,6 +4,9 @@ import { IMAGE_UPLOAD_ACCEPT } from "./images/imageValidation.js";
 
 const AssetLibraryPanel = lazy(() => import("./assets/AssetLibraryPanel.jsx"));
 const ImageLibraryPanel = lazy(() => import("./images/ImageLibraryPanel.jsx"));
+const TemplateLibraryPanel = lazy(
+  () => import("../templates/TemplateLibraryPanel.jsx"),
+);
 
 const tools = [
   {
@@ -32,6 +35,9 @@ function EditorSidebar({
   onAddText,
   onInsertAsset,
   onUploadImage,
+  onReplaceImageAsset,
+  imageReplacementTarget,
+  onUseTemplate,
   disabled = false,
 }) {
   const fileInputRef = useRef(null);
@@ -50,6 +56,10 @@ function EditorSidebar({
       setActiveTool((current) => (current === "Shapes" ? null : "Shapes"));
     } else if (tool.label === "Images") {
       setActiveTool((current) => (current === "Images" ? null : "Images"));
+    } else if (tool.label === "Templates") {
+      setActiveTool((current) =>
+        current === "Templates" ? null : "Templates",
+      );
     }
   };
 
@@ -91,13 +101,14 @@ function EditorSidebar({
                       ? "Add vector shapes"
                       : tool.label === "Images"
                         ? "Browse uploaded images"
-                        : `${tool.label} tools coming soon`
+                        : "Browse editable templates"
             }
             aria-pressed={
               tool.label === "Text" ||
               tool.label === "Assets" ||
               tool.label === "Shapes" ||
-              tool.label === "Images"
+              tool.label === "Images" ||
+              tool.label === "Templates"
                 ? activeTool === tool.label
                 : undefined
             }
@@ -170,8 +181,26 @@ function EditorSidebar({
             <ImageLibraryPanel
               onUploadImage={onUploadImage}
               onInsertAsset={onInsertAsset}
+              onReplaceAsset={onReplaceImageAsset}
+              replacementTarget={imageReplacementTarget}
               onClose={() => setActiveTool(null)}
               isUploading={isUploading}
+            />
+          </Suspense>
+        </section>
+      )}
+      {activeTool === "Templates" && (
+        <section className="absolute inset-y-0 left-full w-96 overflow-hidden border-r border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-950">
+          <Suspense
+            fallback={
+              <div className="grid h-full place-items-center text-sm text-slate-400">
+                Loading templates…
+              </div>
+            }
+          >
+            <TemplateLibraryPanel
+              onUseTemplate={onUseTemplate}
+              onClose={() => setActiveTool(null)}
             />
           </Suspense>
         </section>

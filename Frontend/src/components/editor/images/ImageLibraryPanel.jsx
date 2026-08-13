@@ -73,6 +73,8 @@ function EmptyLibrary({ onUpload }) {
 function ImageLibraryPanel({
   onUploadImage,
   onInsertAsset,
+  onReplaceAsset,
+  replacementTarget,
   onClose,
   isUploading = false,
   mobile = false,
@@ -172,6 +174,20 @@ function ImageLibraryPanel({
       }
     } catch (insertError) {
       setError(insertError.message || "Unable to insert this image.");
+    } finally {
+      setPendingAssetId(null);
+    }
+  };
+
+  const replaceImage = async (asset) => {
+    if (!onReplaceAsset || pendingAssetId || brokenAssetIds.has(asset.id)) return;
+    setPendingAssetId(asset.id);
+    setError("");
+    try {
+      const replaced = await onReplaceAsset(toAssetDescriptor(asset));
+      if (!replaced) throw new Error("Unable to replace the selected image.");
+    } catch (replaceError) {
+      setError(replaceError.message || "Unable to replace the selected image.");
     } finally {
       setPendingAssetId(null);
     }
@@ -289,6 +305,12 @@ function ImageLibraryPanel({
           {uploadPending ? "Uploading..." : "Upload image"}
         </button>
 
+        {replacementTarget && (
+          <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs text-blue-700 dark:border-blue-900/70 dark:bg-blue-950/35 dark:text-blue-300">
+            Choose <span className="font-semibold">Replace</span> on an image to update {replacementTarget}.
+          </div>
+        )}
+
         {error && (
           <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs leading-5 text-red-600 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300" role="alert">
             <div className="flex items-start justify-between gap-2">
@@ -346,11 +368,9 @@ function ImageLibraryPanel({
                 const isBroken = brokenAssetIds.has(asset.id);
                 const isPending = pendingAssetId === asset.id;
                 return (
-                  <button
+                  <div
                     key={asset.id}
-                    type="button"
                     draggable={!mobile && !isBroken}
-                    disabled={Boolean(pendingAssetId) || isBroken}
                     onDragStart={(event) => {
                       suppressClickRef.current = true;
                       writeAssetDragData(event.dataTransfer, descriptor);
@@ -360,14 +380,18 @@ function ImageLibraryPanel({
                         suppressClickRef.current = false;
                       }, 0);
                     }}
-                    onClick={() => {
-                      if (!suppressClickRef.current) void insertImage(asset);
-                    }}
-                    className="group relative min-w-0 touch-manipulation overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 text-left shadow-sm transition duration-150 hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-900"
-                    title={isBroken ? `${asset.originalFilename} is unavailable` : `Add ${asset.originalFilename}`}
-                    aria-label={isBroken ? `${asset.originalFilename} is unavailable` : `Add ${asset.originalFilename}`}
+                    className="group relative min-w-0 touch-manipulation overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 text-left shadow-sm transition duration-150 hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-md dark:border-slate-700 dark:bg-slate-900"
                   >
-                    <span className="relative block aspect-square overflow-hidden bg-slate-100 dark:bg-slate-800">
+                    <button
+                      type="button"
+                      disabled={Boolean(pendingAssetId) || isBroken}
+                      onClick={() => {
+                        if (!suppressClickRef.current) void insertImage(asset);
+                      }}
+                      title={isBroken ? `${asset.originalFilename} is unavailable` : `Add ${asset.originalFilename}`}
+                      aria-label={isBroken ? `${asset.originalFilename} is unavailable` : `Add ${asset.originalFilename}`}
+                      className="relative block aspect-square w-full overflow-hidden bg-slate-100 active:scale-[0.98] disabled:cursor-not-allowed dark:bg-slate-800"
+                    >
                       {isBroken ? (
                         <span className="absolute inset-0 grid place-items-center p-3 text-center text-[10px] font-medium text-slate-400">
                           Image unavailable
@@ -390,11 +414,24 @@ function ImageLibraryPanel({
                           <span className="text-lg leading-none" aria-hidden="true">+</span>
                         )}
                       </span>
-                    </span>
-                    <span className="block truncate bg-white px-2.5 py-2 text-[11px] font-medium text-slate-600 dark:bg-slate-950 dark:text-slate-300">
-                      {asset.name || asset.originalFilename}
-                    </span>
-                  </button>
+                    </button>
+                    <div className="flex min-h-9 items-center gap-1 bg-white px-2 dark:bg-slate-950">
+                      <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                        {asset.name || asset.originalFilename}
+                      </span>
+                      {replacementTarget && !isBroken && (
+                        <button
+                          type="button"
+                          onClick={() => void replaceImage(asset)}
+                          disabled={Boolean(pendingAssetId)}
+                          className="min-h-7 shrink-0 rounded-lg px-1.5 text-[10px] font-bold text-blue-600 transition hover:bg-blue-50 disabled:opacity-50 dark:text-blue-400 dark:hover:bg-blue-950/50"
+                          aria-label={`Replace ${replacementTarget} with ${asset.originalFilename}`}
+                        >
+                          Replace
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>
