@@ -19,13 +19,18 @@ Create social posts, marketing graphics, presentations, and personal designs wit
 
 </div>
 
+
+**Last updated:** 2026-08-16
+
+**Language composition:** JavaScript (99.2%)
+
 ---
 
 ## About the project
 
-DesignFlow is a Canva-inspired design editor built as a real full-stack application. Its editor is based on structured Fabric.js objects rather than flattened images, so text, shapes, icons, images, frames, layer order, crop metadata, and visual properties remain editable after saving and reopening a project.
+DesignFlow is a Canva-inspired design editor built as a real full-stack application. Its editor is based on structured Fabric.js objects rather than flattened images, so text, shapes, icons, image[...]
 
-The project focuses on professional editing behavior: intentional editing modes, atomic undo/redo history, synchronized layers, reusable asset libraries, responsive mobile controls, and reliable project persistence.
+The project focuses on professional editing behavior: intentional editing modes, atomic undo/redo history, synchronized layers, reusable asset libraries, responsive mobile controls, and reliable p[...]
 
 ## Core features
 
@@ -47,7 +52,7 @@ The project focuses on professional editing behavior: intentional editing modes,
 
 ## Template workflow
 
-Templates are structured design documents, not screenshots. Choosing a template creates a new project owned by the authenticated user and copies the template's Fabric canvas data into it. The original template remains unchanged.
+Templates are structured design documents, not screenshots. Choosing a template creates a new project owned by the authenticated user and copies the template's Fabric canvas data into it. The orig[...]
 
 Every supported object remains editable inside the normal editor:
 
